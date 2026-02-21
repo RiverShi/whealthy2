@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, watch, computed } from "vue";
+import { ref, reactive, watch } from "vue";
 import Sheet from "@/components/ui/Sheet.vue";
 import Input from "@/components/ui/Input.vue";
 import Label from "@/components/ui/Label.vue";
@@ -7,7 +7,8 @@ import Switch from "@/components/ui/Switch.vue";
 import Button from "@/components/ui/Button.vue";
 import { useEntryStore } from "@/stores/entries";
 import { useCategoryStore } from "@/stores/categories";
-import type { Entry, EntryKind, ValuationType, CreateEntryParams } from "@/api/entries";
+import CategoryPicker from "@/components/ui/CategoryPicker.vue";
+import type { Entry, EntryKind, CreateEntryParams } from "@/api/entries";
 
 const props = defineProps<{
   open?: boolean;
@@ -39,10 +40,11 @@ const form = reactive<CreateEntryParams>({
 
 const loading = ref(false);
 
-const level1Categories = computed(() => {
-  const domain = form.kind === "asset" ? "asset" : "liability";
-  return categoryStore.categories.filter(c => c.domain === domain && c.level === 1);
-});
+// 分类选择回调（同时设置 L1 和 L2）
+function handleCategorySelect(payload: { l1Id: string; l2Id: string }) {
+  form.categoryL1Id = payload.l1Id || undefined;
+  form.categoryL2Id = payload.l2Id || undefined;
+}
 
 watch(() => props.open, (val) => {
   if (val) {
@@ -166,19 +168,11 @@ function handleKindChange() {
       <!-- 分类 -->
       <div class="space-y-2">
         <Label>分类</Label>
-        <select
-          v-model="form.categoryL1Id"
-          class="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option :value="undefined">无分类</option>
-          <option
-            v-for="cat in level1Categories"
-            :key="cat.id"
-            :value="cat.id"
-          >
-            {{ cat.icon }} {{ cat.name }}
-          </option>
-        </select>
+        <CategoryPicker
+          :model-value="form.categoryL2Id ?? form.categoryL1Id ?? ''"
+          :domain="form.kind === 'asset' ? 'asset' : 'liability'"
+          @select="handleCategorySelect"
+        />
       </div>
     </div>
 

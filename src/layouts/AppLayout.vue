@@ -1,156 +1,194 @@
 <script setup lang="ts">
-import { RouterView, RouterLink, useRoute } from "vue-router";
+import { RouterView, useRoute, RouterLink } from "vue-router";
 import {
-  BookOpen,
+  LayoutList,
   BarChart3,
   Settings,
   Wallet,
-  ChevronRight,
-  Plus,
-  Search,
+  ChevronDown,
   Moon,
   Sun,
+  BookOpen,
+  Tag,
+  BookMarked,
+  Plus,
+  Check,
 } from "lucide-vue-next";
 import { useBookStore } from "@/stores/books";
-import { computed, ref } from "vue";
+import { ref, onMounted } from "vue";
 
 const route = useRoute();
 const bookStore = useBookStore();
 const isDark = ref(false);
-const searchQuery = ref("");
+const showBookPicker = ref(false);
+const showNewBookInput = ref(false);
+const newBookName = ref("");
 
-const navMain = [
-  { label: "账本", icon: BookOpen, to: "/books", badge: null },
-  { label: "统计视图", icon: BarChart3, to: "/views/default", badge: null },
+onMounted(async () => {
+  await bookStore.fetchBooks();
+});
+
+// 主导航 tab
+const mainTabs = [
+  { label: "账目", icon: LayoutList, to: "/records" },
+  { label: "资产", icon: Wallet, to: "/assets" },
+  { label: "统计", icon: BarChart3, to: "/stats" },
 ];
 
-const navSettings = [
+// 底部管理
+const settingLinks = [
+  { label: "账本管理", icon: BookOpen, to: "/books" },
   { label: "分类管理", icon: Settings, to: "/settings/categories" },
-  { label: "标签管理", icon: Settings, to: "/settings/tags" },
+  { label: "标签管理", icon: Tag, to: "/settings/tags" },
 ];
-
-const recentBooks = computed(() => bookStore.books.slice(0, 5));
 
 function isActive(path: string) {
-  return route.path.startsWith(path);
+  return route.path === path || route.path.startsWith(path + "/");
 }
 
 function toggleTheme() {
   isDark.value = !isDark.value;
   document.documentElement.classList.toggle("dark");
 }
+
+async function selectBook(id: string) {
+  bookStore.setActiveBook(id);
+  showBookPicker.value = false;
+  // 刷新当前页面数据（路由不变，各页面 watch activeBookId）
+}
+
+async function createAndSelectBook() {
+  const name = newBookName.value.trim();
+  if (!name) return;
+  const book = await bookStore.createBook(name);
+  bookStore.setActiveBook(book.id);
+  newBookName.value = "";
+  showNewBookInput.value = false;
+  showBookPicker.value = false;
+}
 </script>
 
 <template>
-  <div class="flex h-screen bg-background text-foreground overflow-hidden">
-    <!-- 侧边栏 -->
-    <aside class="w-64 shrink-0 flex flex-col border-r border-border bg-card shadow-smooth">
-      <!-- Logo区域 -->
-      <div class="flex items-center justify-between px-6 py-6 border-b border-border">
-        <div class="flex items-center gap-3">
-          <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-md">
-            <Wallet class="w-5 h-5" />
+  <div class="flex h-screen bg-background text-foreground overflow-hidden" @click="showBookPicker = false">
+    <!-- ══ 左侧边栏 ══════════════════════════════════════════════════════════ -->
+    <aside class="w-56 shrink-0 flex flex-col border-r border-border bg-card" @click.stop>
+
+      <!-- 账本切换器（顶部） -->
+      <div class="relative px-3 pt-4 pb-3 border-b border-border">
+        <button
+          @click="showBookPicker = !showBookPicker"
+          class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-accent transition-colors text-left"
+        >
+          <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <BookMarked class="w-4 h-4 text-primary" />
           </div>
-          <div>
-            <span class="font-bold text-lg tracking-tight">Wealthy</span>
-            <p class="text-xs text-muted-foreground">财富管理</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 搜索框 -->
-      <div class="px-4 py-3 border-b border-border">
-        <div class="relative">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            v-model="searchQuery"
-            placeholder="搜索账本..."
-            class="w-full pl-9 pr-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-smooth"
-          />
-        </div>
-      </div>
-
-      <!-- 主导航 -->
-      <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        <div class="mb-4">
-          <RouterLink
-            v-for="item in navMain"
-            :key="item.to"
-            :to="item.to"
-            class="group flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-smooth"
-            :class="isActive(item.to)
-              ? 'bg-primary text-primary-foreground shadow-md'
-              : 'text-foreground/70 hover:bg-accent hover:text-accent-foreground'"
-          >
-            <div class="flex items-center gap-3">
-              <component :is="item.icon" class="w-[18px] h-[18px] shrink-0" />
-              <span>{{ item.label }}</span>
-            </div>
-            <ChevronRight 
-              v-if="isActive(item.to)" 
-              class="w-4 h-4 opacity-70" 
-            />
-          </RouterLink>
-        </div>
-
-        <!-- 账本快捷列表 -->
-        <div v-if="recentBooks.length" class="pt-2">
-          <div class="flex items-center justify-between px-3 pb-2">
-            <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              最近账本
+          <div class="flex-1 min-w-0">
+            <p class="text-[11px] text-muted-foreground leading-none mb-0.5">当前账本</p>
+            <p class="text-sm font-semibold truncate leading-tight">
+              {{ bookStore.activeBook?.name ?? "请选择账本" }}
             </p>
-            <button 
-              @click="$router.push('/books')"
-              class="text-primary hover:text-primary/80 transition-smooth"
+          </div>
+          <ChevronDown class="w-4 h-4 text-muted-foreground shrink-0 transition-transform" :class="showBookPicker ? 'rotate-180' : ''" />
+        </button>
+
+        <!-- 账本下拉面板 -->
+        <div
+          v-if="showBookPicker"
+          class="absolute left-3 right-3 top-full mt-1 z-50 rounded-xl border border-border bg-card shadow-lg overflow-hidden"
+        >
+          <div class="max-h-52 overflow-y-auto py-1">
+            <button
+              v-for="book in bookStore.books"
+              :key="book.id"
+              @click="selectBook(book.id)"
+              class="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
             >
-              <Plus class="w-4 h-4" />
+              <Check
+                class="w-3.5 h-3.5 shrink-0 text-primary"
+                :class="bookStore.activeBookId === book.id ? 'opacity-100' : 'opacity-0'"
+              />
+              <span class="truncate">{{ book.name }}</span>
             </button>
           </div>
-          <RouterLink
-            v-for="book in recentBooks"
-            :key="book.id"
-            :to="`/books/${book.id}`"
-            class="group flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-smooth"
-            :class="route.params.id === book.id
-              ? 'bg-accent text-accent-foreground font-medium'
-              : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'"
-          >
-            <div class="flex items-center gap-2 flex-1 min-w-0">
-              <div class="w-1.5 h-1.5 rounded-full bg-primary shrink-0" 
-                   :class="route.params.id === book.id ? 'opacity-100' : 'opacity-0'"></div>
-              <span class="truncate">{{ book.name }}</span>
+          <!-- 新建账本 -->
+          <div class="border-t border-border p-2">
+            <div v-if="showNewBookInput" class="flex gap-1.5">
+              <input
+                v-model="newBookName"
+                @keyup.enter="createAndSelectBook"
+                placeholder="账本名称"
+                autofocus
+                class="flex-1 text-sm px-2.5 py-1.5 rounded-lg border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              <button @click="createAndSelectBook" class="px-2.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium">创建</button>
             </div>
-            <ChevronRight class="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-smooth shrink-0" />
-          </RouterLink>
+            <button
+              v-else
+              @click="showNewBookInput = true"
+              class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
+            >
+              <Plus class="w-3.5 h-3.5" />
+              <span>新建账本</span>
+            </button>
+          </div>
         </div>
+      </div>
+
+      <!-- 主导航 Tab -->
+      <nav class="flex-1 py-3 px-3 space-y-0.5">
+        <RouterLink
+          v-for="tab in mainTabs"
+          :key="tab.to"
+          :to="tab.to"
+          class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
+          :class="isActive(tab.to)
+            ? 'bg-primary text-primary-foreground'
+            : 'text-foreground/70 hover:bg-accent hover:text-foreground'"
+        >
+          <component :is="tab.icon" class="w-[18px] h-[18px] shrink-0" />
+          <span>{{ tab.label }}</span>
+        </RouterLink>
       </nav>
 
-      <!-- 底部设置和主题切换 -->
-      <div class="py-3 px-3 border-t border-border space-y-1">
+      <!-- 底部管理区 -->
+      <div class="py-3 px-3 border-t border-border space-y-0.5">
         <RouterLink
-          v-for="item in navSettings"
+          v-for="item in settingLinks"
           :key="item.to"
           :to="item.to"
-          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-smooth text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors"
+          :class="isActive(item.to)
+            ? 'bg-accent text-foreground font-medium'
+            : 'text-muted-foreground hover:bg-accent hover:text-foreground'"
         >
-          <component :is="item.icon" class="w-[18px] h-[18px] shrink-0" />
+          <component :is="item.icon" class="w-[17px] h-[17px] shrink-0" />
           <span>{{ item.label }}</span>
         </RouterLink>
-        
+
         <button
           @click="toggleTheme"
-          class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-smooth text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-muted-foreground hover:bg-accent hover:text-foreground"
         >
-          <Moon v-if="!isDark" class="w-[18px] h-[18px] shrink-0" />
-          <Sun v-else class="w-[18px] h-[18px] shrink-0" />
+          <Moon v-if="!isDark" class="w-[17px] h-[17px] shrink-0" />
+          <Sun v-else class="w-[17px] h-[17px] shrink-0" />
           <span>{{ isDark ? "浅色模式" : "深色模式" }}</span>
         </button>
       </div>
     </aside>
 
-    <!-- 主内容区 -->
+    <!-- ══ 主内容区 ══════════════════════════════════════════════════════════ -->
     <main class="flex-1 overflow-y-auto bg-background">
-      <RouterView />
+      <!-- 无账本时引导 -->
+      <div v-if="!bookStore.activeBook && !bookStore.loading" class="h-full flex flex-col items-center justify-center gap-4 text-center px-8">
+        <div class="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+          <BookMarked class="w-8 h-8 text-primary" />
+        </div>
+        <div>
+          <p class="text-lg font-semibold mb-1">还没有账本</p>
+          <p class="text-sm text-muted-foreground">点击左上角「当前账本」区域创建第一本账本</p>
+        </div>
+      </div>
+      <RouterView v-else />
     </main>
   </div>
 </template>

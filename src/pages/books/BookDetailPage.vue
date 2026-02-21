@@ -1,32 +1,26 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { onMounted, ref, computed, watch } from "vue";
 import { useEntryStore } from "@/stores/entries";
 import { useBookStore } from "@/stores/books";
 import { 
   TrendingUp, 
   TrendingDown, 
   Plus, 
-  Receipt, 
   Edit2, 
   DollarSign,
-  ArrowLeft,
   PieChart,
   Wallet,
-  CreditCard,
   Activity
 } from "lucide-vue-next";
 import EntryForm from "@/components/EntryForm.vue";
 import AdjustValueSheet from "@/components/AdjustValueSheet.vue";
 import type { Entry, EntryKind } from "@/api/entries";
 
-const route = useRoute();
-const router = useRouter();
 const entryStore = useEntryStore();
 const bookStore = useBookStore();
 
-const bookId = route.params.id as string;
-const book = computed(() => bookStore.books.find((b) => b.id === bookId));
+const bookId = computed(() => bookStore.activeBookId ?? "");
+const book = computed(() => bookStore.activeBook);
 
 const showCreateForm = ref(false);
 const createKind = ref<EntryKind>("asset");
@@ -35,8 +29,11 @@ const adjustingEntry = ref<Entry | undefined>();
 const activeTab = ref<'all' | 'assets' | 'liabilities'>('all');
 
 onMounted(() => {
-  entryStore.fetchEntries(bookId);
-  if (!bookStore.books.length) bookStore.fetchBooks();
+  if (bookId.value) entryStore.fetchEntries(bookId.value);
+});
+
+watch(bookId, (newId) => {
+  if (newId) entryStore.fetchEntries(newId);
 });
 
 function fmt(v: number) {
@@ -59,7 +56,7 @@ function handleAdjustClick(entry: Entry) {
 }
 
 function handleFormSuccess() {
-  entryStore.fetchEntries(bookId);
+  entryStore.fetchEntries(bookId.value);
 }
 
 const filteredAssets = computed(() => {
@@ -82,33 +79,18 @@ const filteredLiabilities = computed(() => {
     <!-- 页头 -->
     <div class="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
       <div class="max-w-7xl mx-auto px-8 py-6">
-        <button 
-          @click="router.back()" 
-          class="group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4 transition-smooth"
-        >
-          <ArrowLeft class="w-4 h-4 group-hover:-translate-x-1 transition-smooth" />
-          返回账本列表
-        </button>
-        
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-4">
             <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-md">
               <Wallet class="w-6 h-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 class="text-3xl font-bold">{{ book?.name ?? "账本详情" }}</h1>
-              <p class="text-sm text-muted-foreground mt-1">管理你的资产和负债条目</p>
+              <p class="text-xs text-muted-foreground mb-0.5">{{ book?.name }}</p>
+              <h1 class="text-2xl font-bold">资产</h1>
             </div>
           </div>
           
           <div class="flex gap-3">
-            <button
-              @click="router.push(`/books/${bookId}/records`)"
-              class="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-accent hover:border-primary/30 transition-smooth"
-            >
-              <Receipt class="w-4 h-4" />
-              记账流水
-            </button>
             <button
               @click="handleCreateClick('liability')"
               class="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-destructive/20 bg-destructive/5 text-destructive text-sm font-medium hover:bg-destructive/10 transition-smooth"

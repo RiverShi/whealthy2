@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, watch } from "vue";
 import { recordApi, eventApi, type CreateRecordParams, type RecordType, type Event } from "@/api/records";
 import { useEntryStore } from "@/stores/entries";
@@ -7,6 +7,7 @@ import Sheet from "@/components/ui/Sheet.vue";
 import Button from "@/components/ui/Button.vue";
 import Input from "@/components/ui/Input.vue";
 import Label from "@/components/ui/Label.vue";
+import CategoryPicker from "@/components/ui/CategoryPicker.vue";
 
 const props = defineProps<{
   open: boolean;
@@ -63,13 +64,9 @@ const accounts = computed(() =>
   entryStore.entries.filter((e) => e.isAccount && !e.closedAt)
 );
 
-// 根据类型显示对应领域的分类
-const categories = computed(() => {
-  const domain = type.value === "income" ? "income" : "expense";
-  return categoryStore.categories.filter(
-    (c) => c.domain === domain && c.level === 1
-  );
-});
+const categoryDomain = computed(() =>
+  type.value === "income" ? ("income" as const) : ("expense" as const)
+);
 
 const showCategory = computed(() => type.value !== "transfer");
 const showFromAccount = computed(() => type.value === "expense" || type.value === "transfer");
@@ -116,7 +113,7 @@ async function handleSubmit() {
     name: name.value.trim() || undefined,
     eventId: eventId.value || undefined,
     amount: amt,
-    happenedAt: happenedAt.value + "T00:00:00",
+    happenedAt: happenedAt.value,
     categoryId: categoryId.value || undefined,
     fromAccountId: fromAccountId.value || undefined,
     toAccountId: toAccountId.value || undefined,
@@ -150,7 +147,7 @@ async function handleSubmit() {
 const typeOptions: { value: RecordType; label: string; color: string }[] = [
   { value: "expense", label: "支出", color: "text-rose-500" },
   { value: "income", label: "收入", color: "text-emerald-500" },
-  { value: "transfer", label: "转账", color: "text-muted-foreground" },
+  { value: "transfer", label: "不计收支", color: "text-muted-foreground" },
 ];
 </script>
 
@@ -173,6 +170,53 @@ const typeOptions: { value: RecordType; label: string; color: string }[] = [
             {{ opt.label }}
           </button>
         </div>
+      </div>
+
+      <!-- 关联事件 -->
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <Label for="event-sel">
+            关联事件
+            <span class="text-muted-foreground font-normal text-xs ml-1">可选</span>
+          </Label>
+          <button
+            type="button"
+            @click="showNewEvent = !showNewEvent; newEventName = ''"
+            class="text-xs text-primary hover:underline flex items-center gap-0.5"
+          >
+            {{ showNewEvent ? '取消' : '＋ 新建事件' }}
+          </button>
+        </div>
+        <div v-if="showNewEvent" class="flex gap-2 mb-2">
+          <input
+            v-model="newEventName"
+            placeholder="事件名称，如：旅行、婚礼…"
+            autofocus
+            @keyup.enter="createEventInline"
+            class="flex-1 h-10 rounded-xl border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <button
+            type="button"
+            :disabled="!newEventName.trim() || creatingEvent"
+            @click="createEventInline"
+            class="px-4 h-10 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-40 shrink-0"
+          >
+            {{ creatingEvent ? '创建中…' : '创建' }}
+          </button>
+        </div>
+        <select
+          id="event-sel"
+          v-model="eventId"
+          class="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <option value="">— 不关联事件 —</option>
+          <option v-for="ev in events" :key="ev.id" :value="ev.id">
+            {{ ev.name }}
+          </option>
+        </select>
+        <p v-if="events.length === 0 && !showNewEvent" class="text-xs text-muted-foreground mt-1.5">
+          暂无事件，点击「＋ 新建事件」创建
+        </p>
       </div>
 
       <!-- 名称（可选，不填时用分类名显示） -->
@@ -213,17 +257,11 @@ const typeOptions: { value: RecordType; label: string; color: string }[] = [
 
       <!-- 分类（收入/支出时显示） -->
       <div v-if="showCategory">
-        <Label for="category" class="mb-1.5 block">分类</Label>
-        <select
-          id="category"
+        <Label class="mb-1.5 block">分类</Label>
+        <CategoryPicker
           v-model="categoryId"
-          class="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <option value="">— 不选分类 —</option>
-          <option v-for="c in categories" :key="c.id" :value="c.id">
-            {{ c.icon ? c.icon + " " : "" }}{{ c.name }}
-          </option>
-        </select>
+          :domain="categoryDomain"
+        />
       </div>
 
       <!-- 转出账户（支出/转账时显示） -->
@@ -270,54 +308,6 @@ const typeOptions: { value: RecordType; label: string; color: string }[] = [
         />
       </div>
 
-      <!-- 事件关联 -->
-      <div>
-        <div class="flex items-center justify-between mb-1.5">
-          <Label for="event-sel">
-            关联事件
-            <span class="text-muted-foreground font-normal text-xs ml-1">可选</span>
-          </Label>
-          <button
-            type="button"
-            @click="showNewEvent = !showNewEvent; newEventName = ''"
-            class="text-xs text-primary hover:underline flex items-center gap-0.5"
-          >
-            {{ showNewEvent ? '取消' : '＋ 新建事件' }}
-          </button>
-        </div>
-
-        <!-- 内联新建表单 -->
-        <div v-if="showNewEvent" class="flex gap-2 mb-2">
-          <input
-            v-model="newEventName"
-            placeholder="事件名称，如：旅行支出、婚礼笹备…"
-            @keyup.enter="createEventInline"
-            class="flex-1 h-10 rounded-xl border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          <button
-            type="button"
-            :disabled="!newEventName.trim() || creatingEvent"
-            @click="createEventInline"
-            class="px-4 h-10 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-40 shrink-0"
-          >
-            {{ creatingEvent ? '创建中…' : '创建' }}
-          </button>
-        </div>
-
-        <select
-          id="event-sel"
-          v-model="eventId"
-          class="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <option value="">— 不关联事件 —</option>
-          <option v-for="ev in events" :key="ev.id" :value="ev.id">
-            {{ ev.name }}
-          </option>
-        </select>
-        <p v-if="events.length === 0 && !showNewEvent" class="text-xs text-muted-foreground mt-1.5">
-          暂无事件，点击“＋ 新建事件”创建第一个
-        </p>
-      </div>
 
       <!-- 错误提示 -->
       <p v-if="errorMsg" class="text-sm text-destructive">{{ errorMsg }}</p>

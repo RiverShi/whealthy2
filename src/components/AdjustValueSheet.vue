@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from "vue";
+import { ref, watch } from "vue";
 import Sheet from "@/components/ui/Sheet.vue";
 import Input from "@/components/ui/Input.vue";
 import Label from "@/components/ui/Label.vue";
@@ -67,12 +67,10 @@ function fmt(v: number) {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("zh-CN", { 
+  return new Date(iso).toLocaleDateString("zh-CN", { 
     year: "numeric", 
     month: "2-digit", 
-    day: "2-digit", 
-    hour: "2-digit", 
-    minute: "2-digit" 
+    day: "2-digit"
   });
 }
 </script>

@@ -5,36 +5,34 @@ const router = createRouter({
   routes: [
     {
       path: "/",
-      redirect: "/books",
-    },
-    {
-      path: "/",
       component: () => import("@/layouts/AppLayout.vue"),
       children: [
+        // 主应用（账本下的三个 tab）
+        {
+          path: "",
+          name: "home",
+          redirect: "/records",
+        },
+        {
+          path: "records",
+          name: "records",
+          component: () => import("@/pages/records/RecordsPage.vue"),
+        },
+        {
+          path: "assets",
+          name: "assets",
+          component: () => import("@/pages/books/BookDetailPage.vue"),
+        },
+        {
+          path: "stats",
+          name: "stats",
+          component: () => import("@/pages/views/ViewStatsPage.vue"),
+        },
+        // 管理设置
         {
           path: "books",
           name: "books",
           component: () => import("@/pages/books/BooksPage.vue"),
-        },
-        {
-          path: "books/:id",
-          name: "book-detail",
-          component: () => import("@/pages/books/BookDetailPage.vue"),
-        },
-        {
-          path: "books/:id/records",
-          name: "book-records",
-          component: () => import("@/pages/records/RecordsPage.vue"),
-        },
-        {
-          path: "views/:id",
-          name: "view-stats",
-          component: () => import("@/pages/views/ViewStatsPage.vue"),
-        },
-        {
-          path: "books/:id/snapshots",
-          name: "book-snapshots",
-          component: () => import("@/pages/snapshots/SnapshotsPage.vue"),
         },
         {
           path: "settings/categories",

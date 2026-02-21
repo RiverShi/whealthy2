@@ -140,3 +140,44 @@ export const eventApi = {
   delete: (id: string) =>
     invoke<void>("delete_event", { id }),
 };
+
+// ─── 混合 Feed ────────────────────────────────────────────────────────────────
+
+/** 事件摘要：包含旗下流水聚合金额，用于混合 Feed 列表 */
+export interface EventSummary {
+  id: string;
+  bookId: string;
+  name: string;
+  description: string | null;
+  createdAt: string;
+  /** 旗下流水收入总计 */
+  totalIncome: number;
+  /** 旗下流水支出总计 */
+  totalExpense: number;
+  /** 旗下流水条数 */
+  recordCount: number;
+  /** 旗下最新流水日期（无流水时为 null，排序时回退到 createdAt） */
+  latestHappenedAt: string | null;
+}
+
+/** 混合 Feed 项：带 itemType 鉴别符的联合类型 */
+export type FeedItem =
+  | (EventSummary & { itemType: "event" })
+  | (FlowRecord & { itemType: "record" });
+
+export interface FeedSort {
+  /** "date"（默认）或 "amount" */
+  sortBy?: "date" | "amount";
+  /** "desc"（默认）或 "asc" */
+  sortOrder?: "asc" | "desc";
+}
+
+/** 混合 Feed API */
+export const feedApi = {
+  /**
+   * 返回账本下所有事件（含聚合金额）+ 独立流水（无事件归属）的混合列表，
+   * 在后端完成排序。sortBy: "date"（默认）| "amount"
+   */
+  list: (bookId: string, sort?: FeedSort) =>
+    invoke<FeedItem[]>("list_feed", { bookId, sort }),
+};

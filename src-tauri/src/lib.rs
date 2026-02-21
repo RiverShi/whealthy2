@@ -6,11 +6,12 @@ use std::sync::Mutex;
 use rusqlite::Connection;
 use tauri::{State, Manager};
 use error::{AppError, AppResult};
-use commands::{books as cmd_books, entries as cmd_entries, categories as cmd_categories, records as cmd_records};
+use commands::{books as cmd_books, entries as cmd_entries, categories as cmd_categories, records as cmd_records, snapshots as cmd_snapshots};
 use cmd_books::Book;
 use cmd_entries::{Entry, EntryAdjustment, CreateEntryParams, EntryFilter};
 use cmd_categories::{Category, Tag};
-use cmd_records::{Event, EventWithRecords, Record, CreateEventParams, UpdateEventParams, CreateRecordParams, UpdateRecordParams, RecordFilter};
+use cmd_records::{Event, EventWithRecords, Record, CreateEventParams, UpdateEventParams, CreateRecordParams, UpdateRecordParams, RecordFilter, FeedItem, FeedSort};
+use cmd_snapshots::{BookStats, Snapshot, SnapshotTask, SnapshotDiffEntry};
 
 pub struct DbState(pub Mutex<Connection>);
 
@@ -184,6 +185,12 @@ fn list_records(state: State<DbState>, book_id: String, filter: Option<RecordFil
 }
 
 #[tauri::command]
+fn list_feed(state: State<DbState>, book_id: String, sort: Option<FeedSort>) -> AppResult<Vec<FeedItem>> {
+    let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
+    cmd_records::list_feed(&conn, &book_id, sort.as_ref())
+}
+
+#[tauri::command]
 fn get_record(state: State<DbState>, id: String) -> AppResult<Record> {
     let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
     cmd_records::get_record(&conn, &id)
@@ -205,6 +212,76 @@ fn update_record(state: State<DbState>, id: String, params: UpdateRecordParams) 
 fn delete_record(state: State<DbState>, id: String) -> AppResult<()> {
     let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
     cmd_records::delete_record(&conn, &id)
+}
+
+// ─── 统计 Commands ────────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_book_stats(state: State<DbState>, book_id: String, from: String, to: String) -> AppResult<BookStats> {
+    let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
+    cmd_snapshots::get_book_stats(&conn, &book_id, &from, &to)
+}
+
+// ─── 快照 Commands ────────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn list_snapshots(state: State<DbState>, book_id: String, from: Option<String>, to: Option<String>) -> AppResult<Vec<Snapshot>> {
+    let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
+    cmd_snapshots::list_snapshots(&conn, &book_id, from.as_deref(), to.as_deref())
+}
+
+#[tauri::command]
+fn get_snapshot(state: State<DbState>, id: String) -> AppResult<Snapshot> {
+    let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
+    cmd_snapshots::get_snapshot(&conn, &id)
+}
+
+#[tauri::command]
+fn create_snapshot(state: State<DbState>, book_id: String) -> AppResult<Snapshot> {
+    let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
+    cmd_snapshots::create_snapshot(&conn, &book_id)
+}
+
+#[tauri::command]
+fn diff_snapshots(state: State<DbState>, from_id: String, to_id: String) -> AppResult<Vec<SnapshotDiffEntry>> {
+    let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
+    cmd_snapshots::diff_snapshots(&conn, &from_id, &to_id)
+}
+
+#[tauri::command]
+fn list_snapshot_tasks(state: State<DbState>, book_id: Option<String>) -> AppResult<Vec<SnapshotTask>> {
+    let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
+    cmd_snapshots::list_snapshot_tasks(&conn, book_id.as_deref())
+}
+
+#[tauri::command]
+fn get_snapshot_task_for_book(state: State<DbState>, book_id: String) -> AppResult<Option<SnapshotTask>> {
+    let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
+    cmd_snapshots::get_snapshot_task_for_book(&conn, &book_id)
+}
+
+#[tauri::command]
+fn create_snapshot_task(state: State<DbState>, book_id: String, frequency: String) -> AppResult<SnapshotTask> {
+    let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
+    cmd_snapshots::create_snapshot_task(&conn, &book_id, &frequency)
+}
+
+#[tauri::command]
+fn update_snapshot_task(state: State<DbState>, id: String, frequency: Option<String>, is_active: Option<bool>) -> AppResult<SnapshotTask> {
+    let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
+    cmd_snapshots::update_snapshot_task(&conn, &id, frequency.as_deref(), is_active)
+}
+
+#[tauri::command]
+fn delete_snapshot_task(state: State<DbState>, id: String) -> AppResult<()> {
+    let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
+    cmd_snapshots::delete_snapshot_task(&conn, &id)
+}
+
+#[tauri::command]
+fn check_and_run_snapshot_tasks(state: State<DbState>) -> AppResult<()> {
+    let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
+    cmd_snapshots::check_and_run_snapshot_tasks(&conn)
 }
 
 // ─── 应用入口 ─────────────────────────────────────────────────────────────────
@@ -231,6 +308,12 @@ pub fn run() {
             list_tags, create_tag, update_tag, delete_tag,
             list_events, get_event, create_event, update_event, delete_event,
             list_records, get_record, create_record, update_record, delete_record,
+            list_feed,
+            get_book_stats,
+            list_snapshots, get_snapshot, create_snapshot, diff_snapshots,
+            list_snapshot_tasks, get_snapshot_task_for_book,
+            create_snapshot_task, update_snapshot_task, delete_snapshot_task,
+            check_and_run_snapshot_tasks,
         ])
         .run(tauri::generate_context!())
         .expect("运行 Tauri 应用失败");

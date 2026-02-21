@@ -8,6 +8,7 @@ export { default as Badge } from './Badge.vue';
 export { default as StatCard } from './StatCard.vue';
 export { default as EmptyState } from './EmptyState.vue';
 export { default as Dialog } from './Dialog.vue';
+export { default as CategoryPicker } from './CategoryPicker.vue';
 
 // Sheet组件
 export {

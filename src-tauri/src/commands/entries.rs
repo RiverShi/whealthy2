@@ -125,7 +125,7 @@ pub fn get_entry(conn: &Connection, id: &str) -> AppResult<Entry> {
 
 pub fn create_entry(conn: &Connection, params: &CreateEntryParams) -> AppResult<Entry> {
     let id = Uuid::new_v4().to_string();
-    let now = Utc::now().to_rfc3339();
+    let now = Utc::now().format("%Y-%m-%d").to_string();
     let extra_str = params.extra.as_ref().map(|e| e.to_string());
     conn.execute(
         "INSERT INTO entries (id, book_id, name, kind, is_account, valuation_type, value, extra, category_l1_id, category_l2_id, opened_at)
@@ -185,7 +185,7 @@ pub fn adjust_entry_value(conn: &Connection, id: &str, new_value: f64, reason: O
     conn.execute("UPDATE entries SET value = ?1 WHERE id = ?2", rusqlite::params![new_value, id])?;
 
     let adj_id = Uuid::new_v4().to_string();
-    let now = Utc::now().to_rfc3339();
+    let now = Utc::now().format("%Y-%m-%d").to_string();
     conn.execute(
         "INSERT INTO entry_adjustments (id, entry_id, old_value, new_value, reason, adjusted_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         rusqlite::params![adj_id, id, old_value, new_value, reason, now],

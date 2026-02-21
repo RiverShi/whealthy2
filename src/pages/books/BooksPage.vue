@@ -20,7 +20,8 @@ async function handleCreate() {
     const book = await bookStore.createBook(newBookName.value.trim());
     showCreate.value = false;
     newBookName.value = "";
-    router.push(`/books/${book.id}`);
+    bookStore.setActiveBook(book.id);
+    router.push("/records");
   } finally {
     creating.value = false;
   }
@@ -147,11 +148,11 @@ function formatDate(dateStr: string) {
 
         <!-- 账本网格 -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          <router-link
+          <div
             v-for="(book, index) in bookStore.books"
             :key="book.id"
-            :to="`/books/${book.id}`"
-            class="group block rounded-2xl border border-border bg-card p-6 hover:border-primary/40 hover:shadow-lg transition-smooth animate-in"
+            @click="bookStore.setActiveBook(book.id); router.push('/records')"
+            class="group block rounded-2xl border border-border bg-card p-6 hover:border-primary/40 hover:shadow-lg transition-smooth animate-in cursor-pointer"
             :style="{ animationDelay: `${index * 50}ms` }"
           >
             <div class="flex items-start justify-between mb-5">
@@ -190,7 +191,7 @@ function formatDate(dateStr: string) {
                 </div>
               </div>
             </div>
-          </router-link>
+          </div>
 
           <!-- 新建账本卡片 -->
           <button

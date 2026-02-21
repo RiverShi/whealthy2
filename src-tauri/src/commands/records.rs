@@ -172,7 +172,7 @@ pub fn get_event(conn: &Connection, id: &str) -> AppResult<EventWithRecords> {
 
 pub fn create_event(conn: &Connection, params: &CreateEventParams) -> AppResult<Event> {
     let id = Uuid::new_v4().to_string();
-    let now = Utc::now().to_rfc3339();
+    let now = Utc::now().format("%Y-%m-%d").to_string();
     conn.execute(
         "INSERT INTO events (id, book_id, name, description, created_at)
          VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -281,7 +281,7 @@ pub fn get_record(conn: &Connection, id: &str) -> AppResult<Record> {
 
 pub fn create_record(conn: &Connection, params: &CreateRecordParams) -> AppResult<Record> {
     let id = Uuid::new_v4().to_string();
-    let now = Utc::now().to_rfc3339();
+    let now = Utc::now().format("%Y-%m-%d").to_string();
     conn.execute(
         "INSERT INTO records
             (id, book_id, event_id, name, type, amount, category_id,
@@ -377,4 +377,135 @@ pub fn delete_record(conn: &Connection, id: &str) -> AppResult<()> {
         return Err(AppError::NotFound(id.to_string()));
     }
     Ok(())
+}
+
+// ─── 混合 Feed ────────────────────────────────────────────────────────────────
+
+/// 事件摘要：包含旗下流水的聚合金额，用于混合 Feed 列表
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct EventSummary {
+    pub id: String,
+    pub book_id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub created_at: String,
+    /// 旗下流水收入总计
+    pub total_income: f64,
+    /// 旗下流水支出总计
+    pub total_expense: f64,
+    /// 旗下流水条数
+    pub record_count: i64,
+    /// 旗下最新流水的 happened_at（无流水时为 None，排序时回退到 created_at）
+    pub latest_happened_at: Option<String>,
+}
+
+/// 混合 Feed 项：事件摘要 OR 独立流水记录（event_id IS NULL）
+/// serde 使用相邻标签：{ "itemType": "event"|"record", ...fields }
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(tag = "itemType", rename_all = "camelCase")]
+pub enum FeedItem {
+    Event(EventSummary),
+    Record(Record),
+}
+
+/// 混合 Feed 排序参数
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedSort {
+    /// "date"（默认）或 "amount"
+    pub sort_by: Option<String>,
+    /// "desc"（默认）或 "asc"
+    pub sort_order: Option<String>,
+}
+
+pub fn list_feed(conn: &Connection, book_id: &str, sort: Option<&FeedSort>) -> AppResult<Vec<FeedItem>> {
+    // 1. 查所有事件，LEFT JOIN 聚合旗下金额
+    let events: Vec<EventSummary> = {
+        let mut stmt = conn.prepare(
+            "SELECT e.id, e.book_id, e.name, e.description, e.created_at,
+                    COALESCE(SUM(CASE WHEN r.type = 'income'  THEN r.amount ELSE 0 END), 0),
+                    COALESCE(SUM(CASE WHEN r.type = 'expense' THEN r.amount ELSE 0 END), 0),
+                    COUNT(r.id),
+                    MAX(r.happened_at)
+             FROM events e
+             LEFT JOIN records r ON r.event_id = e.id
+             WHERE e.book_id = ?1
+             GROUP BY e.id",
+        )?;
+        let rows = stmt.query_map([book_id], |row| {
+            Ok(EventSummary {
+                id: row.get(0)?,
+                book_id: row.get(1)?,
+                name: row.get(2)?,
+                description: row.get(3)?,
+                created_at: row.get(4)?,
+                total_income: row.get(5)?,
+                total_expense: row.get(6)?,
+                record_count: row.get(7)?,
+                latest_happened_at: row.get(8)?,
+            })
+        })?;
+        rows.collect::<Result<_, _>>()?
+    };
+
+    // 2. 查无归属事件的独立流水（event_id IS NULL）
+    let mut standalone: Vec<Record> = {
+        let mut stmt = conn.prepare(
+            "SELECT id, book_id, event_id, type, amount, category_id,
+                    from_account_id, to_account_id, note, happened_at, created_at, name
+             FROM records WHERE book_id = ?1 AND event_id IS NULL",
+        )?;
+        let rows = stmt.query_map([book_id], row_to_record)?;
+        rows.collect::<Result<_, _>>()?
+    };
+    for r in &mut standalone {
+        r.tag_ids = load_record_tags(conn, &r.id)?;
+    }
+
+    // 3. 合并为统一列表
+    let mut items: Vec<FeedItem> = events
+        .into_iter()
+        .map(FeedItem::Event)
+        .chain(standalone.into_iter().map(FeedItem::Record))
+        .collect();
+
+    // 4. 排序
+    let sort_by = sort.and_then(|s| s.sort_by.as_deref()).unwrap_or("date");
+    let desc = sort
+        .and_then(|s| s.sort_order.as_deref())
+        .map(|o| o != "asc")
+        .unwrap_or(true);
+
+    items.sort_by(|a, b| {
+        if sort_by == "amount" {
+            // 按流水总量排序（事件用收入+支出之和，单笔用金额）
+            let ka = match a {
+                FeedItem::Event(e) => e.total_income + e.total_expense,
+                FeedItem::Record(r) => r.amount,
+            };
+            let kb = match b {
+                FeedItem::Event(e) => e.total_income + e.total_expense,
+                FeedItem::Record(r) => r.amount,
+            };
+            let ord = kb.partial_cmp(&ka).unwrap_or(std::cmp::Ordering::Equal);
+            if desc { ord } else { ord.reverse() }
+        } else {
+            // 按日期排序（事件用最新流水日期，无则用创建日期）
+            let da = match a {
+                FeedItem::Event(e) => e.latest_happened_at.as_deref()
+                    .unwrap_or(&e.created_at).to_string(),
+                FeedItem::Record(r) => r.happened_at.clone(),
+            };
+            let db = match b {
+                FeedItem::Event(e) => e.latest_happened_at.as_deref()
+                    .unwrap_or(&e.created_at).to_string(),
+                FeedItem::Record(r) => r.happened_at.clone(),
+            };
+            let ord = db.cmp(&da);
+            if desc { ord } else { ord.reverse() }
+        }
+    });
+
+    Ok(items)
 }

@@ -30,7 +30,7 @@ pub fn list_books(conn: &Connection) -> AppResult<Vec<Book>> {
 
 pub fn create_book(conn: &Connection, name: &str) -> AppResult<Book> {
     let id = Uuid::new_v4().to_string();
-    let now = Utc::now().to_rfc3339();
+    let now = Utc::now().format("%Y-%m-%d").to_string();
     
     conn.execute(
         "INSERT INTO books (id, name, created_at) VALUES (?1, ?2, ?3)",
@@ -50,7 +50,7 @@ pub fn update_book(conn: &Connection, id: &str, name: &str) -> AppResult<Book> {
 }
 
 pub fn archive_book(conn: &Connection, id: &str) -> AppResult<()> {
-    let now = Utc::now().to_rfc3339();
+    let now = Utc::now().format("%Y-%m-%d").to_string();
     conn.execute(
         "UPDATE books SET archived_at = ?1 WHERE id = ?2",
         rusqlite::params![now, id],
