@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from "vue";
+import { useRouter } from "vue-router";
 import { useCategoryStore } from "@/stores/categories";
 import { Plus, Edit2, Trash2, Tag as TagIcon } from "lucide-vue-next";
 import type { Tag, TagDomain } from "@/api/categories";
+
+const router = useRouter();
 
 const categoryStore = useCategoryStore();
 
@@ -87,140 +90,133 @@ const colorPresets = [
 </script>
 
 <template>
-  <div class="p-8">
-    <div class="mb-8">
-      <h1 class="text-2xl font-bold mb-1">标签管理</h1>
-      <p class="text-sm text-muted-foreground">管理资产、负债、交易的标签</p>
+  <div class="min-h-full bg-background" style="padding-top: env(safe-area-inset-top)">
+    <!-- 顶部导航头 -->
+    <div class="sticky top-0 z-20 bg-card/95 backdrop-blur-xl border-b border-border">
+      <div class="flex items-center gap-3 px-4 py-3">
+        <button
+          @click="router.back()"
+          class="p-2 -ml-1 rounded-xl hover:bg-accent transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h1 class="text-xl font-bold flex-1">标签管理</h1>
+        <button
+          @click="handleCreate"
+          class="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium cursor-pointer"
+        >
+          <Plus class="w-3.5 h-3.5" />新建
+        </button>
+      </div>
     </div>
 
-    <div class="flex gap-2 mb-6 border-b border-border">
+    <div class="px-4 py-3 pb-8">
+
+    <!-- Tab -->
+    <div class="flex gap-1 bg-muted/50 p-1 rounded-xl mb-4">
       <button
         v-for="tab in tabs"
         :key="tab.key"
         @click="activeTab = tab.key"
-        :class="[
-          'px-4 py-2 text-sm font-medium transition-colors relative',
-          activeTab === tab.key
-            ? 'text-primary'
-            : 'text-muted-foreground hover:text-foreground',
-        ]"
-      >
-        {{ tab.label }}
-        <div
-          v-if="activeTab === tab.key"
-          class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-        />
-      </button>
+        class="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+        :class="activeTab === tab.key ? 'bg-card shadow text-foreground' : 'text-muted-foreground'"
+      >{{ tab.label }}</button>
     </div>
 
-    <div class="flex justify-end mb-4">
-      <button
-        @click="handleCreate"
-        class="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
-      >
-        <Plus class="w-4 h-4" />
-        新建标签
-      </button>
-    </div>
+    <div v-if="categoryStore.loading" class="text-center py-16 text-muted-foreground text-sm">加载中…</div>
 
-    <div v-if="categoryStore.loading" class="text-center py-16 text-muted-foreground">
-      加载中…
-    </div>
-
-    <div v-else-if="filteredTags.length" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+    <!-- 标签列表 -->
+    <div v-else-if="filteredTags.length" class="bg-card border border-border rounded-2xl overflow-hidden">
       <div
-        v-for="tag in filteredTags"
+        v-for="(tag, i) in filteredTags"
         :key="tag.id"
-        class="group relative rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-all"
+        class="flex items-center gap-3 px-4 py-3.5"
+        :class="i < filteredTags.length - 1 ? 'border-b border-border/60' : ''"
       >
-        <div class="flex items-center gap-3 mb-3">
-          <div
-            class="w-8 h-8 rounded-lg flex items-center justify-center"
-            :style="{ backgroundColor: tag.color + '20' }"
-          >
-            <TagIcon class="w-4 h-4" :style="{ color: tag.color }" />
-          </div>
-          <span class="font-medium text-sm">{{ tag.name }}</span>
+        <div
+          class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+          :style="{ backgroundColor: (tag.color || '#6366f1') + '20' }"
+        >
+          <TagIcon class="w-4 h-4" :style="{ color: tag.color || '#6366f1' }" />
         </div>
-
-        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div class="flex-1 min-w-0">
+          <span class="text-sm font-medium">{{ tag.name }}</span>
+        </div>
+        <div class="flex gap-0.5 shrink-0">
           <button
             @click="handleEdit(tag)"
-            class="flex-1 p-1.5 rounded-lg hover:bg-accent transition-colors text-xs"
-          >
-            <Edit2 class="w-3.5 h-3.5 mx-auto" />
-          </button>
+            class="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          ><Edit2 class="w-4 h-4" /></button>
           <button
             @click="handleDelete(tag.id)"
-            class="flex-1 p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-colors text-xs"
-          >
-            <Trash2 class="w-3.5 h-3.5 mx-auto" />
-          </button>
+            class="p-2 rounded-lg hover:bg-destructive/10 text-destructive transition-colors cursor-pointer"
+          ><Trash2 class="w-4 h-4" /></button>
         </div>
       </div>
     </div>
 
     <div v-else class="text-center py-16">
-      <p class="text-muted-foreground mb-4">暂无标签</p>
+      <p class="text-muted-foreground mb-4 text-sm">暂无标签</p>
       <button
         @click="handleCreate"
-        class="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
-      >
-        创建第一个标签
-      </button>
+        class="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium cursor-pointer"
+      >创建第一个标签</button>
     </div>
 
-    <div
-      v-if="showCreate"
-      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-    >
-      <div class="bg-card rounded-2xl p-6 w-full max-w-md shadow-xl border border-border">
-        <h2 class="text-base font-semibold mb-4">
-          {{ editingTag ? "编辑标签" : "新建标签" }}
-        </h2>
+    </div>
 
-        <div class="space-y-4 mb-6">
-          <div>
-            <label class="block text-sm font-medium mb-2">标签名称</label>
-            <input
-              v-model="formName"
-              placeholder="输入标签名称"
-              class="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              autofocus
-            />
-          </div>
+    <!-- 底部弹窗表单 -->
+    <Teleport to="body">
+      <div
+        v-if="showCreate"
+        class="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
+        @click.self="showCreate = false"
+      >
+        <div class="bg-card border border-border rounded-t-3xl w-full max-w-lg p-6 shadow-xl animate-in"
+             style="padding-bottom: calc(env(safe-area-inset-bottom) + 24px)">
+          <div class="w-10 h-1 bg-border rounded-full mx-auto mb-5" />
+          <h2 class="text-lg font-bold mb-5">{{ editingTag ? "编辑标签" : "新建标签" }}</h2>
 
-          <div>
-            <label class="block text-sm font-medium mb-2">颜色</label>
-            <div class="grid grid-cols-8 gap-2">
-              <button
-                v-for="color in colorPresets"
-                :key="color"
-                @click="formColor = color"
-                class="w-8 h-8 rounded-lg transition-transform hover:scale-110"
-                :class="{ 'ring-2 ring-ring ring-offset-2': formColor === color }"
-                :style="{ backgroundColor: color }"
+          <div class="space-y-4 mb-6">
+            <div>
+              <label class="block text-sm font-medium mb-2">标签名称</label>
+              <input
+                v-model="formName"
+                placeholder="输入标签名称"
+                class="w-full px-4 py-3.5 rounded-2xl border border-input bg-background text-base focus:outline-none focus:ring-2 focus:ring-ring"
+                autofocus
               />
             </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">颜色</label>
+              <div class="grid grid-cols-8 gap-2">
+                <button
+                  v-for="color in colorPresets"
+                  :key="color"
+                  @click="formColor = color"
+                  class="w-9 h-9 rounded-xl transition-transform cursor-pointer"
+                  :class="{ 'ring-2 ring-ring ring-offset-2': formColor === color }"
+                  :style="{ backgroundColor: color }"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-3">
+            <button
+              @click="showCreate = false"
+              class="flex-1 py-3.5 rounded-2xl border border-border text-sm font-medium hover:bg-accent transition-colors cursor-pointer"
+            >取消</button>
+            <button
+              :disabled="!formName.trim()"
+              @click="handleSubmit"
+              class="flex-1 py-3.5 rounded-2xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 cursor-pointer"
+            >{{ editingTag ? "保存" : "创建" }}</button>
           </div>
         </div>
-
-        <div class="flex gap-2 justify-end">
-          <button
-            @click="showCreate = false"
-            class="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent transition-colors"
-          >
-            取消
-          </button>
-          <button
-            :disabled="!formName.trim()"
-            @click="handleSubmit"
-            class="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 hover:opacity-90 transition-opacity"
-          >
-            {{ editingTag ? "保存" : "创建" }}
-          </button>
-        </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>

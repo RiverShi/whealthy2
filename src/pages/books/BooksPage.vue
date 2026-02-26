@@ -1,20 +1,40 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
 import { useBookStore } from "@/stores/books";
-import { Plus, BookOpen, Archive, TrendingUp, Clock, Sparkles } from "lucide-vue-next";
+import { Plus, BookOpen, Clock, Trash2 } from "lucide-vue-next";
 import { useRouter } from "vue-router";
 import { ref } from "vue";
+import type { Book } from "@/api/books";
 
 const bookStore = useBookStore();
 const router = useRouter();
 const showCreate = ref(false);
 const newBookName = ref("");
 const creating = ref(false);
+const createError = ref("");
+const confirmDeleteBook = ref<Book | null>(null);
+const deleting = ref(false);
 
 onMounted(() => bookStore.fetchBooks());
 
+async function handleDeleteBook() {
+  if (!confirmDeleteBook.value) return;
+  deleting.value = true;
+  try {
+    await bookStore.deleteBook(confirmDeleteBook.value.id);
+    if (bookStore.activeBookId === confirmDeleteBook.value.id) {
+      const remaining = bookStore.books[0];
+      if (remaining) bookStore.setActiveBook(remaining.id);
+    }
+    confirmDeleteBook.value = null;
+  } finally {
+    deleting.value = false;
+  }
+}
+
 async function handleCreate() {
   if (!newBookName.value.trim()) return;
+  createError.value = "";
   creating.value = true;
   try {
     const book = await bookStore.createBook(newBookName.value.trim());
@@ -22,6 +42,8 @@ async function handleCreate() {
     newBookName.value = "";
     bookStore.setActiveBook(book.id);
     router.push("/records");
+  } catch (e: unknown) {
+    createError.value = e instanceof Error ? e.message : "创建失败，请重试";
   } finally {
     creating.value = false;
   }
@@ -42,214 +64,202 @@ function formatDate(dateStr: string) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-background via-background to-accent/5">
-    <!-- 页头 -->
-    <div class="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-      <div class="max-w-7xl mx-auto px-8 py-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <div class="flex items-center gap-3 mb-2">
-              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-md">
-                <BookOpen class="w-5 h-5 text-primary-foreground" />
-              </div>
-              <h1 class="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                我的账本
-              </h1>
-            </div>
-            <p class="text-sm text-muted-foreground ml-[52px]">
-              管理和追踪你的所有资产与负债
-            </p>
-          </div>
-          <button
-            @click="showCreate = true"
-            class="group flex items-center gap-2 px-5 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:shadow-lg hover:scale-105 transition-smooth shadow-md"
-          >
-            <Plus class="w-4 h-4 group-hover:rotate-90 transition-smooth" />
-            新建账本
-          </button>
-        </div>
+  <div class="min-h-full bg-background" style="padding-top: env(safe-area-inset-top)">
+
+    <!-- ── 顶部导航头 ──────────────────────────────────────────────────── -->
+    <div class="sticky top-0 z-20 bg-card/95 backdrop-blur-xl border-b border-border">
+      <div class="flex items-center gap-3 px-4 py-3">
+        <button
+          @click="router.back()"
+          class="p-2 -ml-1 rounded-xl hover:bg-accent transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h1 class="text-xl font-bold flex-1">所有账本</h1>
+        <button
+          @click="showCreate = true"
+          class="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium cursor-pointer"
+        >
+          <Plus class="w-3.5 h-3.5" />新建
+        </button>
       </div>
     </div>
 
-    <div class="max-w-7xl mx-auto px-8 py-8">
+    <!-- ── 内容区 ──────────────────────────────────────────────────────── -->
+    <div class="px-4 py-3 pb-8">
+
       <!-- 加载中 -->
       <div v-if="bookStore.loading" class="flex flex-col items-center justify-center py-24">
         <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 animate-pulse">
           <BookOpen class="w-6 h-6 text-primary" />
         </div>
-        <p class="text-muted-foreground">加载中…</p>
+        <p class="text-muted-foreground text-sm">加载中…</p>
       </div>
 
       <!-- 空状态 -->
-      <div v-else-if="!bookStore.books.length" 
-           class="flex flex-col items-center justify-center py-32 animate-in">
-        <div class="relative mb-8">
-          <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-            <BookOpen class="w-10 h-10 text-primary" />
-          </div>
-          <div class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-            <Sparkles class="w-3 h-3 text-primary" />
-          </div>
+      <div v-else-if="!bookStore.books.length" class="flex flex-col items-center justify-center py-24 animate-in">
+        <div class="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
+          <BookOpen class="w-10 h-10 text-primary" />
         </div>
-        <h3 class="text-xl font-semibold mb-2">开始你的财富之旅</h3>
-        <p class="text-sm text-muted-foreground mb-8 max-w-md text-center">
-          创建第一个账本，开始记录和管理你的资产，让财富增长更清晰可见
+        <p class="text-xl font-semibold mb-2">开始你的财富之旅</p>
+        <p class="text-sm text-muted-foreground mb-6 text-center leading-relaxed">
+          创建第一个账本，开始记录和管理你的资产
         </p>
         <button
           @click="showCreate = true"
-          class="group flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:shadow-lg hover:scale-105 transition-smooth shadow-md"
+          class="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-2xl text-sm font-medium cursor-pointer shadow-smooth"
         >
-          <Plus class="w-4 h-4 group-hover:rotate-90 transition-smooth" />
+          <Plus class="w-4 h-4" />
           创建第一个账本
         </button>
       </div>
 
       <!-- 账本列表 -->
-      <div v-else class="animate-in">
-        <!-- 统计卡片 -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div class="glass rounded-2xl p-6 shadow-smooth">
-            <div class="flex items-center justify-between mb-3">
-              <p class="text-sm text-muted-foreground">账本总数</p>
-              <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <BookOpen class="w-4 h-4 text-primary" />
-              </div>
-            </div>
-            <p class="text-3xl font-bold">{{ bookStore.books.length }}</p>
-            <p class="text-xs text-muted-foreground mt-2">
-              活跃账本 {{ bookStore.books.filter(b => !b.archivedAt).length }} 个
-            </p>
+      <div v-else class="space-y-3 animate-in">
+        <!-- 统计汇总 -->
+        <div class="flex gap-2 mb-4">
+          <div class="flex-1 rounded-2xl bg-card border border-border p-3 text-center">
+            <p class="text-2xl font-bold">{{ bookStore.books.length }}</p>
+            <p class="text-xs text-muted-foreground mt-0.5">账本总数</p>
           </div>
-
-          <div class="glass rounded-2xl p-6 shadow-smooth">
-            <div class="flex items-center justify-between mb-3">
-              <p class="text-sm text-muted-foreground">最近活动</p>
-              <div class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
-                <Clock class="w-4 h-4 text-success" />
-              </div>
-            </div>
-            <p class="text-3xl font-bold">
-              {{ bookStore.books.length > 0 ? formatDate(bookStore.books[0].createdAt) : '-' }}
-            </p>
-            <p class="text-xs text-muted-foreground mt-2">上次更新时间</p>
-          </div>
-
-          <div class="glass rounded-2xl p-6 shadow-smooth">
-            <div class="flex items-center justify-between mb-3">
-              <p class="text-sm text-muted-foreground">管理效率</p>
-              <div class="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center">
-                <TrendingUp class="w-4 h-4 text-info" />
-              </div>
-            </div>
-            <p class="text-3xl font-bold">优秀</p>
-            <p class="text-xs text-muted-foreground mt-2">财务记录完整度</p>
+          <div class="flex-1 rounded-2xl bg-card border border-border p-3 text-center">
+            <p class="text-2xl font-bold">{{ bookStore.books.length }}</p>
+            <p class="text-xs text-muted-foreground mt-0.5">活跃账本</p>
           </div>
         </div>
 
-        <!-- 账本网格 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- 账本卡片列表 -->
+        <div class="bg-card border border-border rounded-2xl overflow-hidden">
           <div
-            v-for="(book, index) in bookStore.books"
+            v-for="(book, i) in bookStore.books"
             :key="book.id"
             @click="bookStore.setActiveBook(book.id); router.push('/records')"
-            class="group block rounded-2xl border border-border bg-card p-6 hover:border-primary/40 hover:shadow-lg transition-smooth animate-in cursor-pointer"
-            :style="{ animationDelay: `${index * 50}ms` }"
+            class="flex items-center gap-3 px-4 py-4 cursor-pointer active:bg-accent/40 transition-colors"
+            :class="[
+              i < bookStore.books.length - 1 ? 'border-b border-border/60' : '',
+              bookStore.activeBookId === book.id ? 'bg-primary/5' : ''
+            ]"
           >
-            <div class="flex items-start justify-between mb-5">
-              <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center group-hover:scale-110 transition-smooth">
-                  <BookOpen class="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h3 class="font-semibold text-base group-hover:text-primary transition-smooth">
-                    {{ book.name }}
-                  </h3>
-                  <p class="text-xs text-muted-foreground mt-0.5">
-                    账本 ID: {{ book.id.slice(0, 8) }}
-                  </p>
-                </div>
-              </div>
-              <Archive 
-                v-if="book.archivedAt" 
-                class="w-5 h-5 text-muted-foreground/50" 
-                title="已归档"
+            <div
+              class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+              :class="bookStore.activeBookId === book.id ? 'bg-primary/15' : 'bg-muted/50'"
+            >
+              <BookOpen
+                class="w-5 h-5"
+                :class="bookStore.activeBookId === book.id ? 'text-primary' : 'text-muted-foreground'"
               />
             </div>
-
-            <div class="space-y-3">
-              <div class="flex items-center gap-2 text-sm">
-                <Clock class="w-4 h-4 text-muted-foreground/50" />
-                <span class="text-muted-foreground">
-                  创建于 {{ formatDate(book.createdAt) }}
-                </span>
-              </div>
-              
-              <div class="pt-3 border-t border-border/50">
-                <div class="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>查看详情</span>
-                  <span class="opacity-0 group-hover:opacity-100 transition-smooth">→</span>
-                </div>
-              </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold truncate">{{ book.name }}</p>
+              <p class="text-xs text-muted-foreground mt-0.5">
+                <Clock class="inline w-3 h-3 mr-0.5" />{{ formatDate(book.createdAt) }}
+              </p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <span
+                v-if="bookStore.activeBookId === book.id"
+                class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary"
+              >当前</span>
+              <button
+                @click.stop="confirmDeleteBook = book"
+                class="p-1.5 rounded-lg text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+              >
+                <Trash2 class="w-4 h-4" />
+              </button>
+              <svg class="w-4 h-4 text-muted-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
             </div>
           </div>
-
-          <!-- 新建账本卡片 -->
-          <button
-            @click="showCreate = true"
-            class="group flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border p-6 hover:border-primary hover:bg-accent/30 transition-smooth min-h-[200px]"
-          >
-            <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-smooth">
-              <Plus class="w-6 h-6 text-primary group-hover:rotate-90 transition-smooth" />
-            </div>
-            <p class="font-medium text-sm text-muted-foreground group-hover:text-foreground transition-smooth">
-              创建新账本
-            </p>
-          </button>
         </div>
+
+        <!-- 新建账本按钮 -->
+        <button
+          @click="showCreate = true"
+          class="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors text-sm font-medium text-muted-foreground hover:text-primary cursor-pointer"
+        >
+          <Plus class="w-4 h-4" />
+          创建新账本
+        </button>
       </div>
     </div>
 
-    <!-- 新建对话框 -->
-    <div 
-      v-if="showCreate" 
-      class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in"
-      @click.self="showCreate = false; newBookName = ''"
-    >
-      <div class="bg-card rounded-2xl p-8 w-full max-w-md shadow-2xl border border-border animate-in">
-        <div class="flex items-center gap-3 mb-6">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-            <BookOpen class="w-5 h-5 text-primary-foreground" />
+    <!-- ── 删除账本确认弹窗 ─────────────────────────────────────────────── -->
+    <Teleport to="body">
+      <div
+        v-if="confirmDeleteBook"
+        class="fixed inset-0 z-[100] flex items-end justify-center bg-black/40"
+        @click.self="confirmDeleteBook = null"
+      >
+        <div class="bg-card border border-border rounded-t-3xl w-full max-w-lg p-6 shadow-xl"
+             style="padding-bottom: calc(env(safe-area-inset-bottom) + 24px)">
+          <div class="w-10 h-1 bg-border rounded-full mx-auto mb-5" />
+          <div class="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+            <Trash2 class="w-6 h-6 text-destructive" />
           </div>
-          <h2 class="text-xl font-bold">新建账本</h2>
-        </div>
-        
-        <div class="mb-6">
-          <label class="block text-sm font-medium mb-2 text-muted-foreground">账本名称</label>
-          <input
-            v-model="newBookName"
-            placeholder="例如：个人资产、家庭账本"
-            class="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-smooth"
-            @keyup.enter="handleCreate"
-            autofocus
-          />
-        </div>
-        
-        <div class="flex gap-3">
-          <button
-            @click="showCreate = false; newBookName = ''"
-            class="flex-1 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:bg-accent transition-smooth"
-          >
-            取消
-          </button>
-          <button
-            :disabled="!newBookName.trim() || creating"
-            @click="handleCreate"
-            class="flex-1 px-4 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:scale-105 transition-smooth enabled:shadow-md"
-          >
-            {{ creating ? "创建中…" : "创建账本" }}
-          </button>
+          <p class="font-bold text-lg text-center mb-1">删除「{{ confirmDeleteBook!.name }}」？</p>
+          <p class="text-sm text-muted-foreground text-center mb-6 leading-relaxed">
+            账本及其下所有数据将被永久删除，此操作无法撤销。
+          </p>
+          <div class="flex gap-3">
+            <button
+              @click="confirmDeleteBook = null"
+              class="flex-1 py-3.5 rounded-2xl border border-border text-sm font-medium hover:bg-accent transition-colors cursor-pointer"
+            >取消</button>
+            <button
+              :disabled="deleting"
+              @click="handleDeleteBook"
+              class="flex-1 py-3.5 rounded-2xl bg-destructive text-destructive-foreground text-sm font-medium disabled:opacity-60 hover:opacity-90 transition-opacity cursor-pointer"
+            >{{ deleting ? '删除中…' : '确认删除' }}</button>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
+
+    <!-- ── 新建账本底部弹窗 ─────────────────────────────────────────────── -->
+    <Teleport to="body">
+      <div
+        v-if="showCreate"
+        class="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
+        @click.self="showCreate = false; newBookName = ''; createError = ''"
+      >
+        <div class="bg-card border border-border rounded-t-3xl w-full max-w-lg p-6 shadow-xl animate-in"
+             style="padding-bottom: calc(env(safe-area-inset-bottom) + 24px)">
+          <div class="w-10 h-1 bg-border rounded-full mx-auto mb-5" />
+          <div class="flex items-center gap-3 mb-5">
+            <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <BookOpen class="w-5 h-5 text-primary" />
+            </div>
+            <h2 class="text-lg font-bold">新建账本</h2>
+          </div>
+          <div class="mb-5">
+            <label class="block text-sm font-medium mb-2 text-muted-foreground">账本名称</label>
+            <input
+              v-model="newBookName"
+              placeholder="例如：个人资产、家庭账本"
+              class="w-full px-4 py-3.5 rounded-2xl border bg-background text-base focus:outline-none focus:ring-2 transition-colors"
+              :class="createError ? 'border-destructive focus:ring-destructive/40' : 'border-input focus:ring-ring'"
+              @keyup.enter="handleCreate"
+              @input="createError = ''"
+              autofocus
+            />
+            <p v-if="createError" class="mt-2 text-xs text-destructive">{{ createError }}</p>
+          </div>
+          <div class="flex gap-3">
+            <button
+              @click="showCreate = false; newBookName = ''"
+                @click="showCreate = false; newBookName = ''; createError = ''"
+            >取消</button>
+            <button
+              :disabled="!newBookName.trim() || creating"
+              @click="handleCreate"
+              class="flex-1 py-3.5 rounded-2xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 cursor-pointer"
+            >{{ creating ? "创建中…" : "创建账本" }}</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

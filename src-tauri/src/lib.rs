@@ -1,8 +1,9 @@
 mod db;
 mod error;
 mod commands;
+mod mcp;
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use rusqlite::Connection;
 use tauri::{State, Manager};
 use error::{AppError, AppResult};
@@ -13,7 +14,7 @@ use cmd_categories::{Category, Tag};
 use cmd_records::{Event, EventWithRecords, Record, CreateEventParams, UpdateEventParams, CreateRecordParams, UpdateRecordParams, RecordFilter, FeedItem, FeedSort};
 use cmd_snapshots::{BookStats, Snapshot, SnapshotTask, SnapshotDiffEntry};
 
-pub struct DbState(pub Mutex<Connection>);
+pub struct DbState(pub Arc<Mutex<Connection>>);
 
 // ─── 账本 Commands ────────────────────────────────────────────────────────────
 
@@ -33,12 +34,6 @@ fn create_book(state: State<DbState>, name: String) -> AppResult<Book> {
 fn update_book(state: State<DbState>, id: String, name: String) -> AppResult<Book> {
     let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
     cmd_books::update_book(&conn, &id, &name)
-}
-
-#[tauri::command]
-fn archive_book(state: State<DbState>, id: String) -> AppResult<()> {
-    let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
-    cmd_books::archive_book(&conn, &id)
 }
 
 #[tauri::command]
@@ -297,11 +292,21 @@ pub fn run() {
             let db_path = app_dir.join("wealthy.db");
             let conn = Connection::open(&db_path).expect("无法打开数据库");
             db::initialize_database(&conn).expect("数据库初始化失败");
-            app.manage(DbState(Mutex::new(conn)));
+            // 共享同一个 Mutex<Connection>，Tauri 命令与 MCP 服务不再各自开连接
+            let db_arc = Arc::new(Mutex::new(conn));
+            app.manage(DbState(Arc::clone(&db_arc)));
+
+            // 启动 MCP 服务，传入共享 DB 引用
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = crate::mcp::server::start_mcp_server(3030, db_arc).await {
+                    eprintln!("MCP server error: {}", e);
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            list_books, create_book, update_book, archive_book, delete_book,
+            list_books, create_book, update_book, delete_book,
             list_entries, get_entry, create_entry, update_entry, delete_entry,
             adjust_entry_value, list_entry_adjustments,
             list_categories, create_category, update_category, delete_category,

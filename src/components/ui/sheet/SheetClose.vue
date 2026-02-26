@@ -7,7 +7,7 @@ defineProps<{
 
 const setOpen = inject<(value: boolean) => void>("setSheetOpen");
 
-function handleClick(e: Event) {
+function handleClick() {
   setOpen?.(false);
 }
 </script>

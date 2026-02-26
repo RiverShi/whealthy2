@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { transactionApi, type CreateTransactionParams, type TransactionItemType } from "@/api/transactions";
+import { transactionApi, type CreateTransactionParams } from "@/api/transactions";
 import { entryApi, type Entry } from "@/api/entries";
 import { useCategoryStore } from "@/stores/categories";
 import { Plus, Trash2 } from "lucide-vue-next";

@@ -2,6 +2,7 @@
 import { onMounted, ref, computed, watch } from "vue";
 import { useEntryStore } from "@/stores/entries";
 import { useBookStore } from "@/stores/books";
+import { useCategoryStore } from "@/stores/categories";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -10,14 +11,18 @@ import {
   DollarSign,
   PieChart,
   Wallet,
-  Activity
+  Activity,
+  CreditCard,
+  ChevronRight,
 } from "lucide-vue-next";
 import EntryForm from "@/components/EntryForm.vue";
 import AdjustValueSheet from "@/components/AdjustValueSheet.vue";
+import EntryDetailSheet from "@/components/EntryDetailSheet.vue";
 import type { Entry, EntryKind } from "@/api/entries";
 
 const entryStore = useEntryStore();
 const bookStore = useBookStore();
+const categoryStore = useCategoryStore();
 
 const bookId = computed(() => bookStore.activeBookId ?? "");
 const book = computed(() => bookStore.activeBook);
@@ -26,14 +31,31 @@ const showCreateForm = ref(false);
 const createKind = ref<EntryKind>("asset");
 const editingEntry = ref<Entry | undefined>();
 const adjustingEntry = ref<Entry | undefined>();
+const viewingEntry = ref<Entry | undefined>();
+const confirmDeleteEntry = ref<Entry | undefined>();
 const activeTab = ref<'all' | 'assets' | 'liabilities'>('all');
 
 onMounted(() => {
-  if (bookId.value) entryStore.fetchEntries(bookId.value);
+  if (bookId.value) {
+    entryStore.fetchEntries(bookId.value);
+    categoryStore.fetchCategories("asset");
+    categoryStore.fetchCategories("liability");
+  }
 });
 
 watch(bookId, (newId) => {
-  if (newId) entryStore.fetchEntries(newId);
+  if (newId) {
+    entryStore.fetchEntries(newId);
+    categoryStore.fetchCategories("asset");
+    categoryStore.fetchCategories("liability");
+  }
+});
+
+// 分类 ID → 名称 map
+const entryCategoryMap = computed(() => {
+  const m: Record<string, string> = {};
+  categoryStore.categories.forEach(c => { m[c.id] = c.name; });
+  return m;
 });
 
 function fmt(v: number) {
@@ -53,6 +75,20 @@ function handleEditClick(entry: Entry) {
 
 function handleAdjustClick(entry: Entry) {
   adjustingEntry.value = entry;
+}
+
+function handleViewClick(entry: Entry) {
+  viewingEntry.value = entry;
+}
+
+async function handleDeleteFromDetail(entry: Entry) {
+  confirmDeleteEntry.value = entry;
+}
+
+async function confirmDelete() {
+  if (!confirmDeleteEntry.value) return;
+  await entryStore.deleteEntry(confirmDeleteEntry.value.id);
+  confirmDeleteEntry.value = undefined;
 }
 
 function handleFormSuccess() {
@@ -75,237 +111,167 @@ const filteredLiabilities = computed(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-background via-background to-accent/5">
-    <!-- 页头 -->
-    <div class="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-      <div class="max-w-7xl mx-auto px-8 py-6">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-md">
-              <Wallet class="w-6 h-6 text-primary-foreground" />
-            </div>
-            <div>
-              <p class="text-xs text-muted-foreground mb-0.5">{{ book?.name }}</p>
-              <h1 class="text-2xl font-bold">资产</h1>
-            </div>
+  <div class="min-h-full bg-background" style="padding-top: env(safe-area-inset-top)">
+
+    <!-- ══ 顶部固定头部 ════════════════════════════════════════════════════ -->
+    <div class="sticky top-0 z-20 bg-card/95 backdrop-blur-xl border-b border-border">
+      <div class="px-4 py-3">
+        <div class="flex items-center justify-between gap-2 mb-2.5">
+          <div>
+            <p class="text-[11px] text-muted-foreground leading-none mb-0.5">{{ book?.name }}</p>
+            <h1 class="text-xl font-bold leading-tight">资产</h1>
           </div>
-          
-          <div class="flex gap-3">
+          <div class="flex gap-2">
             <button
               @click="handleCreateClick('liability')"
-              class="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-destructive/20 bg-destructive/5 text-destructive text-sm font-medium hover:bg-destructive/10 transition-smooth"
-            >
-              <Plus class="w-4 h-4" />
-              新增负债
-            </button>
+              class="flex items-center gap-1.5 px-3 py-2 border border-destructive/20 bg-destructive/5 text-destructive rounded-xl text-sm font-medium cursor-pointer"
+            ><Plus class="w-3.5 h-3.5" />负债</button>
             <button
               @click="handleCreateClick('asset')"
-              class="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:shadow-lg hover:scale-105 transition-smooth shadow-md"
-            >
-              <Plus class="w-4 h-4" />
-              新增资产
-            </button>
+              class="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium cursor-pointer"
+            ><Plus class="w-3.5 h-3.5" />资产</button>
           </div>
+        </div>
+
+        <!-- Tab 切换 -->
+        <div class="flex gap-1 bg-muted/50 p-1 rounded-xl">
+          <button
+            @click="activeTab = 'all'"
+            class="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+            :class="activeTab === 'all' ? 'bg-card shadow text-foreground' : 'text-muted-foreground'"
+          >全部</button>
+          <button
+            @click="activeTab = 'assets'"
+            class="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+            :class="activeTab === 'assets' ? 'bg-card shadow text-foreground' : 'text-muted-foreground'"
+          >资产</button>
+          <button
+            @click="activeTab = 'liabilities'"
+            class="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+            :class="activeTab === 'liabilities' ? 'bg-card shadow text-foreground' : 'text-muted-foreground'"
+          >负债</button>
         </div>
       </div>
     </div>
 
-    <div class="max-w-7xl mx-auto px-8 py-8">
-      <!-- 净资产概览 -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-in">
-        <div class="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-success/10 via-card to-card p-6 shadow-smooth">
-          <div class="absolute top-0 right-0 w-32 h-32 bg-success/5 rounded-full -mr-16 -mt-16"></div>
-          <div class="relative">
-            <div class="flex items-center justify-between mb-3">
-              <p class="text-sm font-medium text-muted-foreground">总资产</p>
-              <div class="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
-                <TrendingUp class="w-5 h-5 text-success" />
-              </div>
-            </div>
-            <p class="text-3xl font-bold text-success mb-1">¥ {{ fmt(entryStore.totalAssets) }}</p>
-            <p class="text-xs text-muted-foreground">{{ entryStore.assets.length }} 项资产</p>
-          </div>
-        </div>
+    <!-- ══ 内容区 ════════════════════════════════════════════════════════ -->
+    <div class="px-4 py-3 space-y-4 pb-6">
 
-        <div class="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-destructive/10 via-card to-card p-6 shadow-smooth">
-          <div class="absolute top-0 right-0 w-32 h-32 bg-destructive/5 rounded-full -mr-16 -mt-16"></div>
-          <div class="relative">
-            <div class="flex items-center justify-between mb-3">
-              <p class="text-sm font-medium text-muted-foreground">总负债</p>
-              <div class="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
-                <TrendingDown class="w-5 h-5 text-destructive" />
-              </div>
-            </div>
-            <p class="text-3xl font-bold text-destructive mb-1">¥ {{ fmt(entryStore.totalLiabilities) }}</p>
-            <p class="text-xs text-muted-foreground">{{ entryStore.liabilities.length }} 项负债</p>
+      <!-- ── 净资产汇总卡片 ──────────────────────────────────────────── -->
+      <div class="grid grid-cols-3 gap-2">
+        <!-- 总资产 -->
+        <div class="rounded-2xl border border-border bg-card p-3">
+          <div class="flex items-center gap-1 mb-1">
+            <TrendingUp class="w-3 h-3 text-emerald-500" />
+            <p class="text-[10px] text-muted-foreground font-medium">总资产</p>
           </div>
+          <p class="text-base font-bold text-emerald-500 tabular-nums">¥{{ fmt(entryStore.totalAssets) }}</p>
+          <p class="text-[10px] text-muted-foreground mt-0.5">{{ entryStore.assets.length }} 项</p>
         </div>
-
-        <div class="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary via-primary to-primary/90 p-6 shadow-smooth-lg">
-          <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
-          <div class="relative">
-            <div class="flex items-center justify-between mb-3">
-              <p class="text-sm font-medium text-primary-foreground/80">净资产</p>
-              <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                <PieChart class="w-5 h-5 text-primary-foreground" />
-              </div>
-            </div>
-            <p class="text-3xl font-bold text-primary-foreground mb-1">¥ {{ fmt(entryStore.netWorth) }}</p>
-            <p class="text-xs text-primary-foreground/70">总资产 - 总负债</p>
+        <!-- 总负债 -->
+        <div class="rounded-2xl border border-border bg-card p-3">
+          <div class="flex items-center gap-1 mb-1">
+            <TrendingDown class="w-3 h-3 text-rose-500" />
+            <p class="text-[10px] text-muted-foreground font-medium">总负债</p>
           </div>
+          <p class="text-base font-bold text-rose-500 tabular-nums">¥{{ fmt(entryStore.totalLiabilities) }}</p>
+          <p class="text-[10px] text-muted-foreground mt-0.5">{{ entryStore.liabilities.length }} 项</p>
+        </div>
+        <!-- 净资产 -->
+        <div class="rounded-2xl border border-primary/20 bg-primary p-3">
+          <div class="flex items-center gap-1 mb-1">
+            <PieChart class="w-3 h-3 text-primary-foreground/80" />
+            <p class="text-[10px] text-primary-foreground/80 font-medium">净资产</p>
+          </div>
+          <p class="text-base font-bold text-primary-foreground tabular-nums">¥{{ fmt(entryStore.netWorth) }}</p>
+          <p class="text-[10px] text-primary-foreground/70 mt-0.5">资产-负债</p>
         </div>
       </div>
 
-      <!-- 加载中 -->
-      <div v-if="entryStore.loading" class="flex flex-col items-center justify-center py-24">
+      <!-- ── 加载中 ──────────────────────────────────────────────────── -->
+      <div v-if="entryStore.loading" class="flex flex-col items-center justify-center py-16">
         <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 animate-pulse">
           <Activity class="w-6 h-6 text-primary" />
         </div>
-        <p class="text-muted-foreground">加载中…</p>
+        <p class="text-muted-foreground text-sm">加载中…</p>
       </div>
 
-      <div v-else class="space-y-8 animate-in">
-        <!-- 标签页切换 -->
-        <div class="flex gap-2 bg-muted/30 p-1.5 rounded-xl w-fit">
-          <button
-            @click="activeTab = 'all'"
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-smooth"
-            :class="activeTab === 'all' 
-              ? 'bg-card shadow-md text-foreground' 
-              : 'text-muted-foreground hover:text-foreground'"
-          >
-            全部
-          </button>
-          <button
-            @click="activeTab = 'assets'"
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-smooth"
-            :class="activeTab === 'assets' 
-              ? 'bg-card shadow-md text-foreground' 
-              : 'text-muted-foreground hover:text-foreground'"
-          >
-            资产
-          </button>
-          <button
-            @click="activeTab = 'liabilities'"
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-smooth"
-            :class="activeTab === 'liabilities' 
-              ? 'bg-card shadow-md text-foreground' 
-              : 'text-muted-foreground hover:text-foreground'"
-          >
-            负债
-          </button>
-        </div>
-
-        <!-- 资产列表 -->
+      <div v-else class="space-y-4">
+        <!-- ── 资产列表 ──────────────────────────────────────────────── -->
         <section v-if="filteredAssets.length > 0">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
-              <Wallet class="w-4 h-4 text-success" />
-            </div>
-            <h2 class="text-lg font-semibold">资产</h2>
-            <span class="text-sm text-muted-foreground">({{ filteredAssets.length }})</span>
+          <div class="flex items-center gap-2 mb-2 px-1">
+            <Wallet class="w-4 h-4 text-emerald-500" />
+            <h2 class="text-sm font-semibold text-muted-foreground">资产</h2>
+            <span class="text-xs text-muted-foreground">({{ filteredAssets.length }})</span>
           </div>
-          
-          <div v-if="!filteredAssets.length" class="text-center py-12 text-muted-foreground glass rounded-2xl">
-            暂无资产条目
-          </div>
-          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-card border border-border rounded-2xl overflow-hidden">
             <div
-              v-for="entry in filteredAssets"
+              v-for="(entry, i) in filteredAssets"
               :key="entry.id"
-              class="group relative overflow-hidden rounded-2xl border border-border bg-card p-5 hover:border-success/30 hover:shadow-lg transition-smooth"
+              class="flex items-center gap-3 px-4 py-3.5 cursor-pointer active:bg-accent/40 transition-colors"
+              :class="i < filteredAssets.length - 1 ? 'border-b border-border/60' : ''"
+              @click="handleViewClick(entry)"
             >
-              <div class="flex items-start justify-between mb-4">
-                <div class="flex items-center gap-3 flex-1">
-                  <div class="w-11 h-11 rounded-xl bg-success/10 flex items-center justify-center shrink-0">
-                    <Wallet class="w-5 h-5 text-success" />
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <h3 class="font-semibold text-base mb-0.5 truncate">{{ entry.name }}</h3>
-                    <p class="text-xs text-muted-foreground">
-                      {{ entry.isAccount ? "账户" : "资产" }} · 
-                      {{ entry.valuationType === "fixed" ? "固定值" : "手动估值" }}
-                    </p>
-                  </div>
-                </div>
-                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-smooth">
-                  <button
-                    @click="handleAdjustClick(entry)"
-                    class="p-2 rounded-lg hover:bg-success/10 transition-smooth"
-                    title="调整价值"
-                  >
-                    <DollarSign class="w-4 h-4 text-success" />
-                  </button>
-                  <button
-                    @click="handleEditClick(entry)"
-                    class="p-2 rounded-lg hover:bg-accent transition-smooth"
-                    title="编辑"
-                  >
-                    <Edit2 class="w-4 h-4" />
-                  </button>
-                </div>
+              <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                <Wallet class="w-5 h-5 text-emerald-500" />
               </div>
-              <div class="flex items-baseline gap-2">
-                <span class="text-2xl font-bold text-success">¥{{ fmt(entry.value) }}</span>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold truncate">{{ entry.name }}</p>
+                <p class="text-xs text-muted-foreground">
+                  {{ entryCategoryMap[entry.categoryL1Id ?? ''] ?? (entry.isAccount ? '账户' : '资产') }}
+                </p>
               </div>
+              <div class="text-right mr-1">
+                <p class="text-sm font-bold text-emerald-500 tabular-nums">¥{{ fmt(entry.value) }}</p>
+              </div>
+              <ChevronRight class="w-4 h-4 text-muted-foreground/50 shrink-0" />
             </div>
           </div>
         </section>
 
-        <!-- 负债列表 -->
+        <!-- ── 负债列表 ──────────────────────────────────────────────── -->
         <section v-if="filteredLiabilities.length > 0">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
-              <CreditCard class="w-4 h-4 text-destructive" />
-            </div>
-            <h2 class="text-lg font-semibold">负债</h2>
-            <span class="text-sm text-muted-foreground">({{ filteredLiabilities.length }})</span>
+          <div class="flex items-center gap-2 mb-2 px-1">
+            <CreditCard class="w-4 h-4 text-rose-500" />
+            <h2 class="text-sm font-semibold text-muted-foreground">负债</h2>
+            <span class="text-xs text-muted-foreground">({{ filteredLiabilities.length }})</span>
           </div>
-          
-          <div v-if="!filteredLiabilities.length" class="text-center py-12 text-muted-foreground glass rounded-2xl">
-            暂无负债条目
-          </div>
-          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-card border border-border rounded-2xl overflow-hidden">
             <div
-              v-for="entry in filteredLiabilities"
+              v-for="(entry, i) in filteredLiabilities"
               :key="entry.id"
-              class="group relative overflow-hidden rounded-2xl border border-border bg-card p-5 hover:border-destructive/30 hover:shadow-lg transition-smooth"
+              class="flex items-center gap-3 px-4 py-3.5 cursor-pointer active:bg-accent/40 transition-colors"
+              :class="i < filteredLiabilities.length - 1 ? 'border-b border-border/60' : ''"
+              @click="handleViewClick(entry)"
             >
-              <div class="flex items-start justify-between mb-4">
-                <div class="flex items-center gap-3 flex-1">
-                  <div class="w-11 h-11 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
-                    <CreditCard class="w-5 h-5 text-destructive" />
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <h3 class="font-semibold text-base mb-0.5 truncate">{{ entry.name }}</h3>
-                    <p class="text-xs text-muted-foreground">
-                      {{ entry.valuationType === "fixed" ? "固定值" : "手动估值" }}
-                    </p>
-                  </div>
-                </div>
-                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-smooth">
-                  <button
-                    @click="handleAdjustClick(entry)"
-                    class="p-2 rounded-lg hover:bg-destructive/10 transition-smooth"
-                    title="调整价值"
-                  >
-                    <DollarSign class="w-4 h-4 text-destructive" />
-                  </button>
-                  <button
-                    @click="handleEditClick(entry)"
-                    class="p-2 rounded-lg hover:bg-accent transition-smooth"
-                    title="编辑"
-                  >
-                    <Edit2 class="w-4 h-4" />
-                  </button>
-                </div>
+              <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center shrink-0">
+                <CreditCard class="w-5 h-5 text-rose-500" />
               </div>
-              <div class="flex items-baseline gap-2">
-                <span class="text-2xl font-bold text-destructive">¥{{ fmt(entry.value) }}</span>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold truncate">{{ entry.name }}</p>
+                <p class="text-xs text-muted-foreground">
+                  {{ entryCategoryMap[entry.categoryL1Id ?? ''] ?? (entry.valuationType === 'fixed' ? '固定值' : '手动估值') }}
+                </p>
               </div>
+              <div class="text-right mr-1">
+                <p class="text-sm font-bold text-rose-500 tabular-nums">¥{{ fmt(entry.value) }}</p>
+              </div>
+              <ChevronRight class="w-4 h-4 text-muted-foreground/50 shrink-0" />
             </div>
           </div>
         </section>
+
+        <!-- 空状态 -->
+        <div
+          v-if="!filteredAssets.length && !filteredLiabilities.length && !entryStore.loading"
+          class="text-center py-16"
+        >
+          <div class="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-4 mx-auto">
+            <Wallet class="w-7 h-7 text-muted-foreground" />
+          </div>
+          <p class="text-base font-medium mb-1">还没有资产条目</p>
+          <p class="text-sm text-muted-foreground">点击上方「资产」或「负债」添加</p>
+        </div>
       </div>
     </div>
 
@@ -326,5 +292,37 @@ const filteredLiabilities = computed(() => {
       :entry="adjustingEntry"
       @success="handleFormSuccess"
     />
+
+    <!-- 条目详情面板 -->
+    <EntryDetailSheet
+      :open="!!viewingEntry"
+      :entry="viewingEntry"
+      :category-name="viewingEntry?.categoryL1Id ? entryCategoryMap[viewingEntry.categoryL1Id] : undefined"
+      @update:open="(val) => { if (!val) viewingEntry = undefined }"
+      @adjust="(e) => { adjustingEntry = e }"
+      @edit="(e) => { handleEditClick(e) }"
+      @delete="handleDeleteFromDetail"
+    />
+
+    <!-- 删除确认 -->
+    <Teleport to="body">
+      <div v-if="confirmDeleteEntry" class="fixed inset-0 z-[100] flex items-end justify-center bg-black/40">
+        <div class="bg-card border border-border rounded-t-3xl w-full max-w-lg p-6 pb-10 shadow-xl">
+          <div class="w-10 h-1 bg-border rounded-full mx-auto mb-5" />
+          <p class="font-semibold text-lg mb-2">删除「{{ confirmDeleteEntry.name }}」？</p>
+          <p class="text-sm text-muted-foreground mb-6">此操作不可撤销。</p>
+          <div class="flex gap-3">
+            <button
+              @click="confirmDeleteEntry = undefined"
+              class="flex-1 py-3.5 rounded-2xl border border-border text-sm font-medium hover:bg-accent transition-colors cursor-pointer"
+            >取消</button>
+            <button
+              @click="confirmDelete"
+              class="flex-1 py-3.5 rounded-2xl bg-destructive text-destructive-foreground text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer"
+            >删除</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

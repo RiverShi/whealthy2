@@ -7,7 +7,6 @@ const router = createRouter({
       path: "/",
       component: () => import("@/layouts/AppLayout.vue"),
       children: [
-        // 主应用（账本下的三个 tab）
         {
           path: "",
           name: "home",
@@ -28,7 +27,13 @@ const router = createRouter({
           name: "stats",
           component: () => import("@/pages/views/ViewStatsPage.vue"),
         },
-        // 管理设置
+        // 更多 / 设置
+        {
+          path: "more",
+          name: "more",
+          component: () => import("@/pages/more/MorePage.vue"),
+        },
+        // 账本管理（从更多页进入）
         {
           path: "books",
           name: "books",

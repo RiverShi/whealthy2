@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Transition, ref, watch } from "vue";
+import { ref, watch } from "vue";
 import { X } from "lucide-vue-next";
 
 const props = defineProps<{
@@ -11,8 +11,12 @@ const emit = defineEmits<{
   "update:open": [value: boolean];
 }>();
 
-const localOpen = ref(props.open);
-watch(() => props.open, (val) => (localOpen.value = val));
+const localOpen = ref(props.open ?? false);
+watch(() => props.open, (val) => {
+  if (val !== undefined) {
+    localOpen.value = val;
+  }
+});
 
 function close() {
   localOpen.value = false;

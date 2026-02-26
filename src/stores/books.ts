@@ -29,25 +29,23 @@ export const useBookStore = defineStore("books", () => {
   }
 
   async function createBook(name: string) {
-    const book = await bookApi.create(name);
+    const trimmed = name.trim();
+    if (books.value.some((b) => b.name === trimmed))
+      throw new Error(`已存在同名账本「${trimmed}」`);
+    const book = await bookApi.create(trimmed);
     books.value.unshift(book);
     if (!activeBookId.value) activeBookId.value = book.id;
     return book;
   }
 
   async function updateBook(id: string, name: string) {
-    const updated = await bookApi.update(id, name);
+    const trimmed = name.trim();
+    if (books.value.some((b) => b.name === trimmed && b.id !== id))
+      throw new Error(`已存在同名账本「${trimmed}」`);
+    const updated = await bookApi.update(id, trimmed);
     const idx = books.value.findIndex((b) => b.id === id);
     if (idx !== -1) books.value[idx] = updated;
     return updated;
-  }
-
-  async function archiveBook(id: string) {
-    await bookApi.archive(id);
-    await fetchBooks();
-    if (activeBookId.value === id) {
-      activeBookId.value = books.value[0]?.id ?? null;
-    }
   }
 
   async function deleteBook(id: string) {
@@ -58,5 +56,5 @@ export const useBookStore = defineStore("books", () => {
     }
   }
 
-  return { books, loading, activeBookId, activeBook, fetchBooks, setActiveBook, createBook, updateBook, archiveBook, deleteBook };
+  return { books, loading, activeBookId, activeBook, fetchBooks, setActiveBook, createBook, updateBook, deleteBook };
 });

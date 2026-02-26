@@ -1,0 +1,136 @@
+{
+  "mcpVersion": "1.0.0",
+  "name": "wealthy-mcp-adapter",
+  "description": "Model Context Protocol adapter for the Wealthy financial management application",
+  "author": "Wealthy Team",
+  "version": "0.1.0",
+  "capabilities": [
+    {
+      "type": "read",
+      "resources": [
+        "financial-data",
+        "books",
+        "entries",
+        "records",
+        "categories",
+        "tags",
+        "events",
+        "snapshots"
+      ],
+      "description": "Read access to financial data including books, entries, records, categories, tags, events, and snapshots"
+    },
+    {
+      "type": "write",
+      "resources": [
+        "books",
+        "entries",
+        "records",
+        "categories",
+        "tags",
+        "events",
+        "snapshots"
+      ],
+      "description": "Write access to financial data - create, update, and delete operations"
+    }
+  ],
+  "endpoints": {
+    "mcp": "/mcp",
+    "health": "/health"
+  },
+  "supportedMethods": [
+    "list_books",
+    "create_book",
+    "update_book",
+    "delete_book",
+    "list_entries",
+    "create_entry",
+    "update_entry",
+    "delete_entry",
+    "adjust_entry_value",
+    "list_entry_adjustments",
+    "list_records",
+    "create_record",
+    "update_record",
+    "delete_record",
+    "list_events",
+    "create_event",
+    "update_event",
+    "delete_event",
+    "list_feed",
+    "get_record",
+    "get_entry",
+    "get_event",
+    "get_book_stats",
+    "list_categories",
+    "create_category",
+    "update_category",
+    "delete_category",
+    "list_tags",
+    "create_tag",
+    "update_tag",
+    "delete_tag",
+    "list_snapshots",
+    "create_snapshot",
+    "get_snapshot",
+    "diff_snapshots",
+    "list_snapshot_tasks",
+    "create_snapshot_task",
+    "update_snapshot_task",
+    "delete_snapshot_task",
+    "check_and_run_snapshot_tasks"
+  ],
+  "schemas": {
+    "book": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name"]
+    },
+    "entry": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "book_id": { "type": "string" },
+        "name": { "type": "string" },
+        "kind": { "type": "string", "enum": ["asset", "liability", "equity", "income", "expense"] },
+        "is_account": { "type": "boolean" },
+        "valuation_type": { "type": "string" },
+        "value": { "type": "number" },
+        "category_l1_id": { "type": "string" },
+        "category_l2_id": { "type": "string" },
+        "tag_ids": { "type": "array", "items": { "type": "string" } },
+        "opened_at": { "type": "string", "format": "date" },
+        "closed_at": { "type": "string", "format": "date" }
+      },
+      "required": ["id", "book_id", "name", "kind", "is_account", "valuation_type", "value", "opened_at"]
+    },
+    "record": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "book_id": { "type": "string" },
+        "event_id": { "type": "string" },
+        "type": { "type": "string", "enum": ["income", "expense", "transfer"] },
+        "amount": { "type": "number" },
+        "category_id": { "type": "string" },
+        "from_account_id": { "type": "string" },
+        "to_account_id": { "type": "string" },
+        "tag_ids": { "type": "array", "items": { "type": "string" } },
+        "note": { "type": "string" },
+        "happened_at": { "type": "string", "format": "date-time" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "book_id", "type", "amount", "happened_at"]
+    }
+  },
+  "metadata": {
+    "language": ["zh-CN"],
+    "financialManagement": true,
+    "doubleEntryBookkeeping": true,
+    "personalFinance": true,
+    "dataExport": true
+  }
+}

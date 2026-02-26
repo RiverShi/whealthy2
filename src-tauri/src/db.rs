@@ -10,8 +10,7 @@ pub fn initialize_database(conn: &Connection) -> Result<()> {
         CREATE TABLE IF NOT EXISTS books (
             id          TEXT PRIMARY KEY,
             name        TEXT NOT NULL,
-            created_at  TEXT NOT NULL,
-            archived_at TEXT
+            created_at  TEXT NOT NULL
         );
 
         CREATE TABLE IF NOT EXISTS categories (

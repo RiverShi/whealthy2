@@ -223,49 +223,49 @@ function fmt(n: number) {
 </script>
 
 <template>
-  <div class="flex flex-col h-full overflow-y-auto">
+  <div class="min-h-full bg-background" style="padding-top: env(safe-area-inset-top)">
     <!-- ── 顶栏 ────────────────────────────────────────────────────────────── -->
-    <div class="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border px-6 py-4">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-xl font-bold">统计</h1>
-          <p class="text-xs text-muted-foreground mt-0.5">
-            {{ bookStore.activeBook?.name ?? "请选择账本" }}
-          </p>
+    <div class="sticky top-0 z-20 bg-card/95 backdrop-blur-xl border-b border-border">
+      <div class="px-4 py-3">
+        <div class="flex items-center justify-between mb-2.5">
+          <div>
+            <p class="text-[11px] text-muted-foreground leading-none mb-0.5">{{ bookStore.activeBook?.name }}</p>
+            <h1 class="text-xl font-bold leading-tight">统计</h1>
+          </div>
+          <button
+            @click="refresh"
+            class="p-2 rounded-xl hover:bg-accent transition-colors text-muted-foreground cursor-pointer"
+            :class="{ 'animate-spin text-primary': statsLoading }"
+          >
+            <RefreshCw class="w-5 h-5" />
+          </button>
         </div>
-        <button
-          @click="refresh"
-          class="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground"
-          :class="{ 'animate-spin text-primary': statsLoading }"
-        >
-          <RefreshCw class="w-4 h-4" />
-        </button>
-      </div>
-      <!-- 时间范围选择器 -->
-      <div class="flex gap-1.5 mt-3">
-        <button
-          v-for="(label, key) in rangeLabels"
-          :key="key"
-          @click="selectedRange = key as Range"
-          class="px-3 py-1 text-xs rounded-lg font-medium transition-colors"
-          :class="selectedRange === key
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-muted text-muted-foreground hover:bg-accent'"
-        >
-          {{ label }}
-        </button>
+        <!-- 时间范围选择器 -->
+        <div class="flex gap-1.5">
+          <button
+            v-for="(label, key) in rangeLabels"
+            :key="key"
+            @click="selectedRange = key as Range"
+            class="flex-1 py-1.5 text-xs rounded-xl font-medium transition-colors cursor-pointer"
+            :class="selectedRange === key
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-muted-foreground hover:bg-accent'"
+          >
+            {{ label }}
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- ── 无账本提示 ──────────────────────────────────────────────────────── -->
-    <div v-if="!bookId" class="flex-1 flex items-center justify-center text-muted-foreground">
+    <div v-if="!bookId" class="flex items-center justify-center py-24 text-muted-foreground">
       <div class="text-center">
         <BarChart3 class="w-12 h-12 mx-auto mb-3 opacity-30" />
         <p class="text-sm">请先选择账本</p>
       </div>
     </div>
 
-    <div v-else class="flex-1 p-6 space-y-5 pb-8">
+    <div v-else class="px-4 py-3 space-y-4 pb-8">
 
       <!-- ── 净资产大卡 ─────────────────────────────────────────────────────── -->
       <div class="rounded-2xl border border-border bg-card p-6">

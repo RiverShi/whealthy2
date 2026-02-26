@@ -108,23 +108,11 @@
     -moz-osx-font-smoothing: grayscale;
   }
   
-  /* 自定义滚动条 */
+  /* 移动端隐藏滚动条 */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    @apply bg-border rounded-full;
-    transition: background-color 0.2s;
-  }
-  
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/30;
+    width: 0;
+    height: 0;
+    display: none;
   }
 }
 
@@ -186,6 +174,39 @@
   
   .animate-out {
     animation: fadeOut 0.2s ease-in;
+  }
+
+  /* iOS 安全区域工具类 */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pl-safe {
+    padding-left: env(safe-area-inset-left);
+  }
+  .pr-safe {
+    padding-right: env(safe-area-inset-right);
+  }
+  .mt-safe {
+    margin-top: env(safe-area-inset-top);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom);
+  }
+  /* 页面内容区域顶部 padding（导航栏高度 + 安全区） */
+  .page-top {
+    padding-top: calc(env(safe-area-inset-top) + 0px);
+  }
+
+  /* 触摸目标最小尺寸 */
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 

@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from "vue";
+import { useRouter } from "vue-router";
 import { useCategoryStore } from "@/stores/categories";
 import { Plus, Edit2, Trash2, FolderTree } from "lucide-vue-next";
 import type { Category, CategoryDomain } from "@/api/categories";
+
+const router = useRouter();
 
 const categoryStore = useCategoryStore();
 
@@ -62,7 +65,7 @@ function handleEdit(category: Category) {
   formName.value = category.name;
   formIcon.value = category.icon || "";
   formLevel.value = category.level;
-  formParentId.value = category.parentId;
+  formParentId.value = category.parentId || undefined;
   showCreate.value = true;
 }
 
@@ -105,39 +108,39 @@ async function handleDelete(id: string) {
 </script>
 
 <template>
-  <div class="p-8">
-    <div class="mb-8">
-      <h1 class="text-2xl font-bold mb-1">分类管理</h1>
-      <p class="text-sm text-muted-foreground">管理资产、负债、收入、支出的分类</p>
+  <div class="min-h-full bg-background" style="padding-top: env(safe-area-inset-top)">
+    <!-- 顶部导航头 -->
+    <div class="sticky top-0 z-20 bg-card/95 backdrop-blur-xl border-b border-border">
+      <div class="flex items-center gap-3 px-4 py-3">
+        <button
+          @click="router.back()"
+          class="p-2 -ml-1 rounded-xl hover:bg-accent transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h1 class="text-xl font-bold flex-1">分类管理</h1>
+        <button
+          @click="handleCreate(1)"
+          class="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium cursor-pointer"
+        >
+          <Plus class="w-3.5 h-3.5" />新建
+        </button>
+      </div>
     </div>
 
-    <div class="flex gap-2 mb-6 border-b border-border">
+    <div class="px-4 py-3 pb-8">
+
+    <div class="flex gap-1 bg-muted/50 p-1 rounded-xl mb-4">
       <button
         v-for="tab in tabs"
         :key="tab.key"
         @click="activeTab = tab.key"
-        :class="[
-          'px-4 py-2 text-sm font-medium transition-colors relative',
-          activeTab === tab.key
-            ? 'text-primary'
-            : 'text-muted-foreground hover:text-foreground',
-        ]"
+        class="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+        :class="activeTab === tab.key ? 'bg-card shadow text-foreground' : 'text-muted-foreground'"
       >
         {{ tab.label }}
-        <div
-          v-if="activeTab === tab.key"
-          class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-        />
-      </button>
-    </div>
-
-    <div class="flex justify-end mb-4">
-      <button
-        @click="handleCreate(1)"
-        class="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
-      >
-        <Plus class="w-4 h-4" />
-        新建一级分类
       </button>
     </div>
 
@@ -157,28 +160,19 @@ async function handleDelete(id: string) {
             <span v-if="parent.icon" class="text-lg">{{ parent.icon }}</span>
             <span class="font-medium">{{ parent.name }}</span>
           </div>
-          <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div class="flex gap-0.5">
             <button
               @click="handleCreate(2, parent.id)"
-              class="p-1.5 rounded-lg hover:bg-accent transition-colors"
-              title="添加子分类"
-            >
-              <Plus class="w-4 h-4" />
-            </button>
+              class="p-2 rounded-lg hover:bg-accent text-muted-foreground transition-colors cursor-pointer"
+            ><Plus class="w-4 h-4" /></button>
             <button
               @click="handleEdit(parent)"
-              class="p-1.5 rounded-lg hover:bg-accent transition-colors"
-              title="编辑"
-            >
-              <Edit2 class="w-4 h-4" />
-            </button>
+              class="p-2 rounded-lg hover:bg-accent text-muted-foreground transition-colors cursor-pointer"
+            ><Edit2 class="w-4 h-4" /></button>
             <button
               @click="handleDelete(parent.id)"
-              class="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-colors"
-              title="删除"
-            >
-              <Trash2 class="w-4 h-4" />
-            </button>
+              class="p-2 rounded-lg hover:bg-destructive/10 text-destructive transition-colors cursor-pointer"
+            ><Trash2 class="w-4 h-4" /></button>
           </div>
         </div>
 
@@ -192,21 +186,15 @@ async function handleDelete(id: string) {
               <span v-if="child.icon" class="text-base">{{ child.icon }}</span>
               <span class="text-sm">{{ child.name }}</span>
             </div>
-            <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div class="flex gap-0.5">
               <button
                 @click="handleEdit(child)"
-                class="p-1.5 rounded-lg hover:bg-accent transition-colors"
-                title="编辑"
-              >
-                <Edit2 class="w-3.5 h-3.5" />
-              </button>
+                class="p-2 rounded-lg hover:bg-accent text-muted-foreground transition-colors cursor-pointer"
+              ><Edit2 class="w-3.5 h-3.5" /></button>
               <button
                 @click="handleDelete(child.id)"
-                class="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-colors"
-                title="删除"
-              >
-                <Trash2 class="w-3.5 h-3.5" />
-              </button>
+                class="p-2 rounded-lg hover:bg-destructive/10 text-destructive transition-colors cursor-pointer"
+              ><Trash2 class="w-3.5 h-3.5" /></button>
             </div>
           </div>
         </div>
@@ -290,6 +278,7 @@ async function handleDelete(id: string) {
           </button>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </template>
