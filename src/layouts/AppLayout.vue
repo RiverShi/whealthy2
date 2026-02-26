@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { RouterView, RouterLink, useRoute } from "vue-router";
 import {
+  Home,
   LayoutList,
   Wallet,
-  BarChart3,
-  MoreHorizontal,
+  User,
+  Plus,
   BookMarked,
 } from "lucide-vue-next";
 import { useBookStore } from "@/stores/books";
@@ -18,21 +19,22 @@ onMounted(async () => {
 });
 
 const tabs = [
+  { label: "首页", icon: Home, to: "/home" },
   { label: "账目", icon: LayoutList, to: "/records" },
   { label: "资产", icon: Wallet, to: "/assets" },
-  { label: "统计", icon: BarChart3, to: "/stats" },
-  { label: "更多", icon: MoreHorizontal, to: "/more" },
+  { label: "我的", icon: User, to: "/more" },
 ];
 
 function isActive(path: string) {
   return route.path === path || route.path.startsWith(path + "/");
 }
 
-// 是否需要显示"无账本"引导（更多页永远不需要）
+// 是否需要显示"无账本"引导（我的页/首页/账本管理页不需要）
 const needsBook = () =>
   !bookStore.activeBook &&
   !bookStore.loading &&
   route.path !== "/more" &&
+  route.path !== "/home" &&
   route.path !== "/books";
 </script>
 
@@ -56,7 +58,7 @@ const needsBook = () =>
         <div>
           <p class="text-xl font-bold mb-2">还没有账本</p>
           <p class="text-sm text-muted-foreground leading-relaxed">
-            前往<strong>「更多」</strong>页面<br />创建第一本账本
+            前往<strong>「我的」</strong>页面<br />创建第一本账本
           </p>
         </div>
         <RouterLink
@@ -69,6 +71,17 @@ const needsBook = () =>
 
       <RouterView v-else />
     </main>
+
+    <!-- ══ 全局 FAB 新建记录 ═══════════════════════════════════════════ -->
+    <button
+      v-if="bookStore.activeBook && route.path !== '/more' && route.path !== '/books'"
+      @click="$router.push('/records')"
+      class="fixed z-40 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-transform duration-150"
+      style="bottom: calc(49px + env(safe-area-inset-bottom) + 16px); right: 20px;"
+      aria-label="新建记录"
+    >
+      <Plus class="w-6 h-6" />
+    </button>
 
     <!-- ══ 底部标签栏 ════════════════════════════════════════════════════ -->
     <nav

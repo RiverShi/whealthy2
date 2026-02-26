@@ -108,6 +108,37 @@ const filteredLiabilities = computed(() => {
   }
   return [];
 });
+
+// ── 按分类分组 ──────────────────────────────────────────────────────────────
+const expandedGroups = ref<Set<string>>(new Set(["__all_assets__", "__all_liabilities__"]));
+
+function toggleGroup(id: string) {
+  if (expandedGroups.value.has(id)) {
+    expandedGroups.value.delete(id);
+  } else {
+    expandedGroups.value.add(id);
+  }
+  // trigger reactivity
+  expandedGroups.value = new Set(expandedGroups.value);
+}
+
+function groupEntries(entries: typeof entryStore.assets, prefix: string) {
+  const groups = new Map<string, { id: string; name: string; entries: typeof entryStore.assets }>();
+  for (const e of entries) {
+    const catId = e.categoryL1Id ?? "__uncategorized__";
+    const catName = entryCategoryMap.value[catId] ?? "未分类";
+    const key = `${prefix}__${catId}`;
+    if (!groups.has(key)) {
+      groups.set(key, { id: key, name: catName, entries: [] });
+      expandedGroups.value.add(key);
+    }
+    groups.get(key)!.entries.push(e);
+  }
+  return Array.from(groups.values());
+}
+
+const groupedAssets = computed(() => groupEntries(filteredAssets.value, "asset"));
+const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value, "liability"));
 </script>
 
 <template>
@@ -197,66 +228,93 @@ const filteredLiabilities = computed(() => {
       </div>
 
       <div v-else class="space-y-4">
-        <!-- ── 资产列表 ──────────────────────────────────────────────── -->
-        <section v-if="filteredAssets.length > 0">
+        <!-- ── 资产列表（按分类折叠分组） ─────────────────────────────── -->
+        <section v-if="groupedAssets.length > 0">
           <div class="flex items-center gap-2 mb-2 px-1">
             <Wallet class="w-4 h-4 text-emerald-500" />
             <h2 class="text-sm font-semibold text-muted-foreground">资产</h2>
             <span class="text-xs text-muted-foreground">({{ filteredAssets.length }})</span>
           </div>
-          <div class="bg-card border border-border rounded-2xl overflow-hidden">
-            <div
-              v-for="(entry, i) in filteredAssets"
-              :key="entry.id"
-              class="flex items-center gap-3 px-4 py-3.5 cursor-pointer active:bg-accent/40 transition-colors"
-              :class="i < filteredAssets.length - 1 ? 'border-b border-border/60' : ''"
-              @click="handleViewClick(entry)"
-            >
-              <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
-                <Wallet class="w-5 h-5 text-emerald-500" />
+          <div class="space-y-2">
+            <div v-for="group in groupedAssets" :key="group.id" class="bg-card border border-border rounded-2xl overflow-hidden">
+              <!-- 分组标题可点击折叠 -->
+              <button
+                class="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-accent/40 transition-colors cursor-pointer"
+                @click="toggleGroup(group.id)"
+              >
+                <ChevronRight
+                  class="w-4 h-4 text-muted-foreground transition-transform duration-200 shrink-0"
+                  :class="expandedGroups.has(group.id) ? 'rotate-90' : ''"
+                />
+                <span class="text-sm font-medium flex-1">{{ group.name }}</span>
+                <span class="text-xs text-muted-foreground">{{ group.entries.length }} 项</span>
+              </button>
+              <div v-if="expandedGroups.has(group.id)" class="border-t border-border/60">
+                <div
+                  v-for="(entry, i) in group.entries"
+                  :key="entry.id"
+                  class="flex items-center gap-3 px-4 py-3.5 cursor-pointer active:bg-accent/40 transition-colors"
+                  :class="i < group.entries.length - 1 ? 'border-b border-border/60' : ''"
+                  @click="handleViewClick(entry)"
+                >
+                  <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                    <Wallet class="w-5 h-5 text-emerald-500" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold truncate">{{ entry.name }}</p>
+                    <p class="text-xs text-muted-foreground">{{ entry.isAccount ? '账户' : '资产' }}</p>
+                  </div>
+                  <div class="text-right mr-1">
+                    <p class="text-sm font-bold text-emerald-500 tabular-nums">¥{{ fmt(entry.value) }}</p>
+                  </div>
+                  <ChevronRight class="w-4 h-4 text-muted-foreground/50 shrink-0" />
+                </div>
               </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold truncate">{{ entry.name }}</p>
-                <p class="text-xs text-muted-foreground">
-                  {{ entryCategoryMap[entry.categoryL1Id ?? ''] ?? (entry.isAccount ? '账户' : '资产') }}
-                </p>
-              </div>
-              <div class="text-right mr-1">
-                <p class="text-sm font-bold text-emerald-500 tabular-nums">¥{{ fmt(entry.value) }}</p>
-              </div>
-              <ChevronRight class="w-4 h-4 text-muted-foreground/50 shrink-0" />
             </div>
           </div>
         </section>
 
-        <!-- ── 负债列表 ──────────────────────────────────────────────── -->
-        <section v-if="filteredLiabilities.length > 0">
+        <!-- ── 负债列表（按分类折叠分组） ─────────────────────────────── -->
+        <section v-if="groupedLiabilities.length > 0">
           <div class="flex items-center gap-2 mb-2 px-1">
             <CreditCard class="w-4 h-4 text-rose-500" />
             <h2 class="text-sm font-semibold text-muted-foreground">负债</h2>
             <span class="text-xs text-muted-foreground">({{ filteredLiabilities.length }})</span>
           </div>
-          <div class="bg-card border border-border rounded-2xl overflow-hidden">
-            <div
-              v-for="(entry, i) in filteredLiabilities"
-              :key="entry.id"
-              class="flex items-center gap-3 px-4 py-3.5 cursor-pointer active:bg-accent/40 transition-colors"
-              :class="i < filteredLiabilities.length - 1 ? 'border-b border-border/60' : ''"
-              @click="handleViewClick(entry)"
-            >
-              <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center shrink-0">
-                <CreditCard class="w-5 h-5 text-rose-500" />
+          <div class="space-y-2">
+            <div v-for="group in groupedLiabilities" :key="group.id" class="bg-card border border-border rounded-2xl overflow-hidden">
+              <button
+                class="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-accent/40 transition-colors cursor-pointer"
+                @click="toggleGroup(group.id)"
+              >
+                <ChevronRight
+                  class="w-4 h-4 text-muted-foreground transition-transform duration-200 shrink-0"
+                  :class="expandedGroups.has(group.id) ? 'rotate-90' : ''"
+                />
+                <span class="text-sm font-medium flex-1">{{ group.name }}</span>
+                <span class="text-xs text-muted-foreground">{{ group.entries.length }} 项</span>
+              </button>
+              <div v-if="expandedGroups.has(group.id)" class="border-t border-border/60">
+                <div
+                  v-for="(entry, i) in group.entries"
+                  :key="entry.id"
+                  class="flex items-center gap-3 px-4 py-3.5 cursor-pointer active:bg-accent/40 transition-colors"
+                  :class="i < group.entries.length - 1 ? 'border-b border-border/60' : ''"
+                  @click="handleViewClick(entry)"
+                >
+                  <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center shrink-0">
+                    <CreditCard class="w-5 h-5 text-rose-500" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold truncate">{{ entry.name }}</p>
+                    <p class="text-xs text-muted-foreground">{{ entry.valuationType === 'fixed' ? '固定值' : '手动估值' }}</p>
+                  </div>
+                  <div class="text-right mr-1">
+                    <p class="text-sm font-bold text-rose-500 tabular-nums">¥{{ fmt(entry.value) }}</p>
+                  </div>
+                  <ChevronRight class="w-4 h-4 text-muted-foreground/50 shrink-0" />
+                </div>
               </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold truncate">{{ entry.name }}</p>
-                <p class="text-xs text-muted-foreground">
-                  {{ entryCategoryMap[entry.categoryL1Id ?? ''] ?? (entry.valuationType === 'fixed' ? '固定值' : '手动估值') }}
-                </p>
-              </div>
-              <div class="text-right mr-1">
-                <p class="text-sm font-bold text-rose-500 tabular-nums">¥{{ fmt(entry.value) }}</p>
-              </div>
-              <ChevronRight class="w-4 h-4 text-muted-foreground/50 shrink-0" />
             </div>
           </div>
         </section>

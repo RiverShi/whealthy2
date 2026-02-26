@@ -71,8 +71,8 @@ const menuGroups = [
 
     <!-- ── 页头 ────────────────────────────────────────────────────────── -->
     <div class="px-4 pt-4 pb-2">
-      <h1 class="text-2xl font-bold">更多</h1>
-      <p class="text-sm text-muted-foreground mt-0.5">账本与设置</p>
+      <h1 class="text-2xl font-bold">我的</h1>
+      <p class="text-sm text-muted-foreground mt-0.5">账本与个人设置</p>
     </div>
 
     <!-- ── 当前账本卡片 ─────────────────────────────────────────────────── -->
