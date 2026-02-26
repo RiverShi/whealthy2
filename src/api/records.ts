@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 // ─── 类型定义 ─────────────────────────────────────────────────────────────────
 
-export type RecordType = "income" | "expense" | "transfer";
+export type RecordType = "income" | "expense" | "transfer" | "inflow" | "outflow";
 
 /** 流水记录：原子记账单元，可独立展示 */
 export interface FlowRecord {

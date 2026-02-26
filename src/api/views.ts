@@ -13,6 +13,8 @@ export interface BookStats {
   netWorth: number;
   income: number;
   expense: number;
+  /** 不计收支类（transfer/inflow/outflow）期间合计 */
+  other: number;
   incomeByCategory: CategoryStat[];
   expenseByCategory: CategoryStat[];
 }

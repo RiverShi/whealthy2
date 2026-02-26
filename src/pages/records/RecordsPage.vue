@@ -5,7 +5,7 @@ import { statsApi, type BookStats } from "@/api/views";
 import { useCategoryStore } from "@/stores/categories";
 import { useBookStore } from "@/stores/books";
 import { useEntryStore } from "@/stores/entries";
-import { ChevronLeft, ChevronRight, Pencil, Trash2, TrendingUp, TrendingDown, Minus } from "lucide-vue-next";
+import { ChevronLeft, ChevronRight, ChevronDown, Pencil, Trash2, TrendingUp, TrendingDown, Minus, FolderOpen } from "lucide-vue-next";
 import RecordForm from "@/components/RecordForm.vue";
 import RecordEditForm from "@/components/RecordEditForm.vue";
 import RecordDetailSheet from "@/components/RecordDetailSheet.vue";
@@ -95,29 +95,78 @@ const filterCategories = computed(() => {
 
 // ── 筛选 ──────────────────────────────────────────────────────────────────
 const filterCategoryId = ref<string | null>(null);
-const filterType = ref<"all" | "income" | "expense">("all");
+const filterType = ref<"all" | "income" | "expense" | "other">("all");
 
 const filteredRecords = computed(() => {
   let rs = records.value;
-  if (filterType.value !== "all") rs = rs.filter((r) => r.type === filterType.value);
+  if (filterType.value === "income") rs = rs.filter((r) => r.type === "income");
+  else if (filterType.value === "expense") rs = rs.filter((r) => r.type === "expense");
+  else if (filterType.value === "other") rs = rs.filter((r) => ["transfer", "inflow", "outflow"].includes(r.type));
   if (filterCategoryId.value) rs = rs.filter((r) => r.categoryId === filterCategoryId.value);
   return rs;
 });
 
-// ── 按日期分组 ────────────────────────────────────────────────────────────
+// ── 事件展开状态 ──────────────────────────────────────────────────────────
+const expandedEventIds = ref<Set<string>>(new Set());
+function toggleEvent(id: string) {
+  const s = new Set(expandedEventIds.value);
+  if (s.has(id)) s.delete(id); else s.add(id);
+  expandedEventIds.value = s;
+}
+
+// ── 统一列表项类型 ────────────────────────────────────────────────────────
+type ListItem =
+  | { kind: "record"; record: FlowRecord }
+  | { kind: "event"; eventId: string; eventName: string; records: FlowRecord[] };
+
+// ── 按日期分组（记录 + 事件混合排序） ─────────────────────────────────────
 const groupedByDate = computed(() => {
-  const groups = new Map<string, FlowRecord[]>();
+  // 把有 eventId 的记录归到事件组，无 eventId 的独立展示
+  const eventGroupMap = new Map<string, FlowRecord[]>();
+  const standaloneRecords: FlowRecord[] = [];
+
   filteredRecords.value.forEach((r) => {
-    const date = r.happenedAt.slice(0, 10);
-    if (!groups.has(date)) groups.set(date, []);
-    groups.get(date)!.push(r);
+    if (r.eventId) {
+      if (!eventGroupMap.has(r.eventId)) eventGroupMap.set(r.eventId, []);
+      eventGroupMap.get(r.eventId)!.push(r);
+    } else {
+      standaloneRecords.push(r);
+    }
   });
-  return Array.from(groups.entries())
+
+  // 合并为统一列表项（每项带排序 key 和日期）
+  type DateItem = { date: string; sortKey: string; item: ListItem };
+  const allItems: DateItem[] = [];
+
+  standaloneRecords.forEach((r) => {
+    allItems.push({ date: r.happenedAt.slice(0, 10), sortKey: r.happenedAt, item: { kind: "record", record: r } });
+  });
+
+  eventGroupMap.forEach((recs, eventId) => {
+    const sorted = [...recs].sort((a, b) => b.happenedAt.localeCompare(a.happenedAt));
+    const sortKey = sorted[0].happenedAt;
+    allItems.push({
+      date: sortKey.slice(0, 10),
+      sortKey,
+      item: { kind: "event", eventId, eventName: eventMap.value[eventId] ?? "未命名事件", records: sorted },
+    });
+  });
+
+  // 按日期分组
+  const dateMap = new Map<string, DateItem[]>();
+  allItems.forEach((it) => {
+    if (!dateMap.has(it.date)) dateMap.set(it.date, []);
+    dateMap.get(it.date)!.push(it);
+  });
+
+  return Array.from(dateMap.entries())
     .sort((a, b) => b[0].localeCompare(a[0]))
-    .map(([date, recs]) => {
-      const income = recs.filter((r) => r.type === "income").reduce((s, r) => s + r.amount, 0);
-      const expense = recs.filter((r) => r.type === "expense").reduce((s, r) => s + r.amount, 0);
-      return { date, recs: recs.sort((a, b) => b.happenedAt.localeCompare(a.happenedAt)), income, expense };
+    .map(([date, items]) => {
+      items.sort((a, b) => b.sortKey.localeCompare(a.sortKey));
+      const allRecs = items.flatMap((it) => it.item.kind === "record" ? [it.item.record] : it.item.records);
+      const income = allRecs.filter((r) => r.type === "income").reduce((s, r) => s + r.amount, 0);
+      const expense = allRecs.filter((r) => r.type === "expense").reduce((s, r) => s + r.amount, 0);
+      return { date, items, income, expense };
     });
 });
 
@@ -138,7 +187,8 @@ function fmtDateHeader(iso: string) {
 function recordLabel(r: FlowRecord) {
   if (r.categoryId && categoryMap.value[r.categoryId]) return categoryMap.value[r.categoryId];
   if (r.name) return r.name;
-  return r.type === "income" ? "收入" : r.type === "expense" ? "支出" : "转账";
+  const typeLabels: Record<string, string> = { income: "收入", expense: "支出", inflow: "流入", outflow: "流出", transfer: "划转" };
+  return typeLabels[r.type] ?? r.type;
 }
 function recordNote(r: FlowRecord): string {
   const parts: string[] = [];
@@ -192,22 +242,20 @@ const viewRecord_eventName = computed(() => viewingRecord.value?.eventId ? event
       </div>
 
       <!-- 月度概览 -->
-      <div class="flex gap-4 px-4 pb-3 text-sm">
-        <div class="flex items-center gap-1.5">
+      <div class="flex gap-4 px-4 pb-3 text-sm overflow-x-auto scrollbar-hide">
+        <div class="flex items-center gap-1.5 shrink-0">
           <span class="text-muted-foreground">收入</span>
           <span class="font-semibold text-emerald-600 dark:text-emerald-400">¥{{ fmtAmount(stats?.income ?? 0) }}</span>
         </div>
-        <div class="w-px bg-border" />
-        <div class="flex items-center gap-1.5">
+        <div class="w-px bg-border shrink-0" />
+        <div class="flex items-center gap-1.5 shrink-0">
           <span class="text-muted-foreground">支出</span>
           <span class="font-semibold text-rose-600 dark:text-rose-400">¥{{ fmtAmount(stats?.expense ?? 0) }}</span>
         </div>
-        <div class="w-px bg-border" />
-        <div class="flex items-center gap-1.5">
-          <span class="text-muted-foreground">结余</span>
-          <span class="font-semibold" :class="(stats?.income ?? 0) - (stats?.expense ?? 0) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
-            ¥{{ fmtAmount(Math.abs((stats?.income ?? 0) - (stats?.expense ?? 0))) }}
-          </span>
+        <div class="w-px bg-border shrink-0" />
+        <div class="flex items-center gap-1.5 shrink-0">
+          <span class="text-muted-foreground">其他</span>
+          <span class="font-semibold text-muted-foreground">¥{{ fmtAmount(stats?.other ?? 0) }}</span>
         </div>
       </div>
 
@@ -222,6 +270,9 @@ const viewRecord_eventName = computed(() => viewingRecord.value?.eventId ? event
         <button @click="filterType = 'expense'; filterCategoryId = null"
           class="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer min-h-[32px]"
           :class="filterType === 'expense' ? 'bg-rose-500 text-white' : 'bg-muted text-muted-foreground hover:bg-accent'">支出</button>
+        <button @click="filterType = 'other'; filterCategoryId = null"
+          class="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer min-h-[32px]"
+          :class="filterType === 'other' ? 'bg-slate-500 text-white' : 'bg-muted text-muted-foreground hover:bg-accent'">其他</button>
         <div v-if="filterCategories.length" class="w-px bg-border shrink-0" />
         <button v-for="cat in filterCategories" :key="cat.id"
           @click="filterCategoryId = filterCategoryId === cat.id ? null : cat.id; filterType = 'all'"
@@ -269,35 +320,122 @@ const viewRecord_eventName = computed(() => viewingRecord.value?.eventId ? event
               <span v-if="group.expense > 0" class="text-rose-600 dark:text-rose-400">-{{ fmtAmount(group.expense) }}</span>
             </div>
           </div>
-          <!-- 记录卡片 -->
+          <!-- 混合卡片 -->
           <div class="bg-card border border-border rounded-2xl overflow-hidden">
-            <div v-for="(r, idx) in group.recs" :key="r.id"
-              @click="viewingRecord = r"
-              class="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-accent/40 active:bg-accent/60 transition-colors min-h-[64px]"
-              :class="idx < group.recs.length - 1 ? 'border-b border-border/60' : ''">
-              <div class="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center"
-                :class="{ 'bg-emerald-100 dark:bg-emerald-900/40': r.type === 'income', 'bg-rose-100 dark:bg-rose-900/40': r.type === 'expense', 'bg-slate-100 dark:bg-slate-800': r.type === 'transfer' }">
-                <TrendingUp v-if="r.type === 'income'" class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <TrendingDown v-else-if="r.type === 'expense'" class="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                <Minus v-else class="w-4 h-4 text-muted-foreground" />
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium truncate">{{ recordLabel(r) }}</p>
-                <p v-if="recordNote(r)" class="text-xs text-muted-foreground mt-0.5 truncate">{{ recordNote(r) }}</p>
-              </div>
-              <div class="flex items-center gap-1.5 shrink-0">
-                <p class="text-sm font-semibold"
-                  :class="{ 'text-emerald-600 dark:text-emerald-400': r.type === 'income', 'text-rose-600 dark:text-rose-400': r.type === 'expense', 'text-muted-foreground': r.type === 'transfer' }">
-                  {{ r.type === "income" ? "+" : r.type === "expense" ? "-" : "" }}¥{{ fmtAmount(r.amount) }}
-                </p>
-                <button @click.stop="openEditRecord(r)" class="p-1.5 rounded-lg text-muted-foreground/50 hover:text-foreground hover:bg-accent transition-colors cursor-pointer">
-                  <Pencil class="w-3.5 h-3.5" />
-                </button>
-                <button @click.stop="askDelete(r)" class="p-1.5 rounded-lg text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer">
-                  <Trash2 class="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
+            <template v-for="(it, idx) in group.items" :key="it.item.kind === 'record' ? it.item.record.id : it.item.eventId">
+
+              <!-- ── 普通记录行 ──────────────────────────────────────────── -->
+              <template v-if="it.item.kind === 'record'">
+                <div
+                  @click="viewingRecord = it.item.record"
+                  class="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-accent/40 active:bg-accent/60 transition-colors min-h-[64px]"
+                  :class="idx < group.items.length - 1 ? 'border-b border-border/60' : ''"
+                >
+                  <div class="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center"
+                    :class="{
+                      'bg-emerald-100 dark:bg-emerald-900/40': it.item.record.type === 'income',
+                      'bg-rose-100 dark:bg-rose-900/40': it.item.record.type === 'expense',
+                      'bg-blue-100 dark:bg-blue-900/40': it.item.record.type === 'inflow',
+                      'bg-orange-100 dark:bg-orange-900/40': it.item.record.type === 'outflow',
+                      'bg-slate-100 dark:bg-slate-800': it.item.record.type === 'transfer',
+                    }">
+                    <TrendingUp v-if="it.item.record.type === 'income'" class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <TrendingDown v-else-if="it.item.record.type === 'expense'" class="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                    <TrendingUp v-else-if="it.item.record.type === 'inflow'" class="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <TrendingDown v-else-if="it.item.record.type === 'outflow'" class="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                    <Minus v-else class="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium truncate">{{ recordLabel(it.item.record) }}</p>
+                    <p v-if="recordNote(it.item.record)" class="text-xs text-muted-foreground mt-0.5 truncate">{{ recordNote(it.item.record) }}</p>
+                  </div>
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <p class="text-sm font-semibold"
+                      :class="{
+                        'text-emerald-600 dark:text-emerald-400': it.item.record.type === 'income',
+                        'text-rose-600 dark:text-rose-400': it.item.record.type === 'expense',
+                        'text-blue-600 dark:text-blue-400': it.item.record.type === 'inflow',
+                        'text-orange-600 dark:text-orange-400': it.item.record.type === 'outflow',
+                        'text-muted-foreground': it.item.record.type === 'transfer',
+                      }">
+                      {{ ['income', 'inflow'].includes(it.item.record.type) ? '+' : ['expense', 'outflow'].includes(it.item.record.type) ? '-' : '' }}¥{{ fmtAmount(it.item.record.amount) }}
+                    </p>
+                    <button @click.stop="openEditRecord(it.item.record)" class="p-1.5 rounded-lg text-muted-foreground/50 hover:text-foreground hover:bg-accent transition-colors cursor-pointer">
+                      <Pencil class="w-3.5 h-3.5" />
+                    </button>
+                    <button @click.stop="askDelete(it.item.record)" class="p-1.5 rounded-lg text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer">
+                      <Trash2 class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </template>
+
+              <!-- ── 事件行（可展开） ────────────────────────────────────── -->
+              <template v-else-if="it.item.kind === 'event'">
+                <!-- 事件标题行 -->
+                <div
+                  class="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-accent/40 transition-colors min-h-[64px]"
+                  :class="idx < group.items.length - 1 || expandedEventIds.has(it.item.eventId) ? 'border-b border-border/60' : ''"
+                  @click="toggleEvent(it.item.eventId)"
+                >
+                  <div class="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center bg-violet-100 dark:bg-violet-900/40">
+                    <FolderOpen class="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium truncate">{{ it.item.eventName }}</p>
+                    <p class="text-xs text-muted-foreground mt-0.5">{{ it.item.records.length }} 条记录</p>
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <!-- 事件内收入/支出汇总 -->
+                    <div class="text-right">
+                      <p v-if="it.item.records.filter(r => r.type === 'income').reduce((s, r) => s + r.amount, 0) > 0" class="text-xs text-emerald-600 dark:text-emerald-400">
+                        +¥{{ fmtAmount(it.item.records.filter(r => r.type === 'income').reduce((s, r) => s + r.amount, 0)) }}
+                      </p>
+                      <p v-if="it.item.records.filter(r => r.type === 'expense').reduce((s, r) => s + r.amount, 0) > 0" class="text-xs text-rose-600 dark:text-rose-400">
+                        -¥{{ fmtAmount(it.item.records.filter(r => r.type === 'expense').reduce((s, r) => s + r.amount, 0)) }}
+                      </p>
+                    </div>
+                    <ChevronDown
+                      class="w-4 h-4 text-muted-foreground transition-transform duration-200"
+                      :class="expandedEventIds.has(it.item.eventId) ? '' : '-rotate-90'"
+                    />
+                  </div>
+                </div>
+                <!-- 展开后的事件记录 -->
+                <template v-if="expandedEventIds.has(it.item.eventId)">
+                  <div
+                    v-for="(r, rIdx) in it.item.records"
+                    :key="r.id"
+                    class="flex items-center gap-3 px-4 py-3 pl-14 cursor-pointer hover:bg-accent/20 transition-colors bg-muted/30"
+                    :class="(rIdx < it.item.records.length - 1 || idx < group.items.length - 1) ? 'border-b border-border/60' : ''"
+                    @click="viewingRecord = r"
+                  >
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-medium truncate">{{ recordLabel(r) }}</p>
+                      <p v-if="r.note" class="text-xs text-muted-foreground mt-0.5 truncate">{{ r.note }}</p>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      <p class="text-sm font-semibold"
+                        :class="{
+                          'text-emerald-600 dark:text-emerald-400': r.type === 'income',
+                          'text-rose-600 dark:text-rose-400': r.type === 'expense',
+                          'text-blue-600 dark:text-blue-400': r.type === 'inflow',
+                          'text-orange-600 dark:text-orange-400': r.type === 'outflow',
+                          'text-muted-foreground': r.type === 'transfer',
+                        }">
+                        {{ ['income', 'inflow'].includes(r.type) ? '+' : ['expense', 'outflow'].includes(r.type) ? '-' : '' }}¥{{ fmtAmount(r.amount) }}
+                      </p>
+                      <button @click.stop="openEditRecord(r)" class="p-1.5 rounded-lg text-muted-foreground/50 hover:text-foreground hover:bg-accent transition-colors cursor-pointer">
+                        <Pencil class="w-3.5 h-3.5" />
+                      </button>
+                      <button @click.stop="askDelete(r)" class="p-1.5 rounded-lg text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer">
+                        <Trash2 class="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </template>
+            </template>
           </div>
         </div>
       </template>

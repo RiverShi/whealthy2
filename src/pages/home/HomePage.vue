@@ -14,7 +14,10 @@ import {
   ArrowRight,
   Check,
   Plus,
+  CalendarPlus,
 } from "lucide-vue-next";
+import RecordForm from "@/components/RecordForm.vue";
+import EventForm from "@/components/EventForm.vue";
 
 const router = useRouter();
 const bookStore = useBookStore();
@@ -96,12 +99,14 @@ function recordLabel(r: FlowRecord) {
   return r.type === "income" ? "收入" : r.type === "expense" ? "支出" : "转账";
 }
 
-const netIncome = computed(() => (stats.value ? stats.value.income - stats.value.expense : 0));
-
 async function selectBook(id: string) {
   bookStore.setActiveBook(id);
   showBookPicker.value = false;
 }
+
+const showRecordForm = ref(false);
+const showEventForm = ref(false);
+
 </script>
 
 <template>
@@ -180,7 +185,7 @@ async function selectBook(id: string) {
       <!-- ── 本月概览 ────────────────────────────────────────────────────── -->
       <div>
         <p class="text-xs font-medium text-muted-foreground px-1 mb-2">本月概览</p>
-        <div class="grid grid-cols-3 gap-2">
+        <div class="grid grid-cols-2 gap-2">
           <div class="bg-card border border-border rounded-2xl p-4">
             <div class="flex items-center gap-1 mb-2">
               <TrendingUp class="w-3.5 h-3.5 text-emerald-500" />
@@ -199,18 +204,6 @@ async function selectBook(id: string) {
               ¥{{ fmt(stats?.expense ?? 0) }}
             </p>
           </div>
-          <div class="bg-card border border-border rounded-2xl p-4">
-            <div class="flex items-center gap-1 mb-2">
-              <Minus class="w-3.5 h-3.5 text-muted-foreground" />
-              <p class="text-xs text-muted-foreground">净收入</p>
-            </div>
-            <p
-              class="text-lg font-bold"
-              :class="netIncome >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'"
-            >
-              {{ netIncome >= 0 ? "+" : "" }}¥{{ fmt(Math.abs(netIncome)) }}
-            </p>
-          </div>
         </div>
       </div>
 
@@ -218,12 +211,26 @@ async function selectBook(id: string) {
       <div>
         <div class="flex items-center justify-between px-1 mb-2">
           <p class="text-xs font-medium text-muted-foreground">最近记录</p>
-          <button
-            @click="router.push('/records')"
-            class="flex items-center gap-0.5 text-xs text-primary cursor-pointer min-h-[44px] pr-1"
-          >
-            查看全部 <ArrowRight class="w-3.5 h-3.5" />
-          </button>
+          <div class="flex items-center gap-1">
+            <button
+              @click="showRecordForm = true"
+              class="flex items-center gap-0.5 text-xs text-primary cursor-pointer px-2 py-1 rounded-lg hover:bg-primary/10 transition-colors min-h-[32px]"
+            >
+              <Plus class="w-3 h-3" />流水
+            </button>
+            <button
+              @click="showEventForm = true"
+              class="flex items-center gap-0.5 text-xs text-primary cursor-pointer px-2 py-1 rounded-lg hover:bg-primary/10 transition-colors min-h-[32px]"
+            >
+              <CalendarPlus class="w-3 h-3" />事件
+            </button>
+            <button
+              @click="router.push('/records')"
+              class="flex items-center gap-0.5 text-xs text-muted-foreground cursor-pointer px-2 py-1 rounded-lg hover:bg-accent transition-colors min-h-[32px]"
+            >
+              全部 <ArrowRight class="w-3 h-3" />
+            </button>
+          </div>
         </div>
 
         <!-- 骨架屏 -->
@@ -256,12 +263,16 @@ async function selectBook(id: string) {
               :class="{
                 'bg-emerald-100 dark:bg-emerald-900/40': r.type === 'income',
                 'bg-rose-100 dark:bg-rose-900/40': r.type === 'expense',
-                'bg-blue-100 dark:bg-blue-900/40': r.type === 'transfer',
+                'bg-blue-100 dark:bg-blue-900/40': r.type === 'inflow',
+                'bg-orange-100 dark:bg-orange-900/40': r.type === 'outflow',
+                'bg-slate-100 dark:bg-slate-800': r.type === 'transfer',
               }"
             >
               <TrendingUp v-if="r.type === 'income'" class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <TrendingDown v-else-if="r.type === 'expense'" class="w-4 h-4 text-rose-600 dark:text-rose-400" />
-              <Minus v-else class="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <TrendingUp v-else-if="r.type === 'inflow'" class="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <TrendingDown v-else-if="r.type === 'outflow'" class="w-4 h-4 text-orange-600 dark:text-orange-400" />
+              <Minus v-else class="w-4 h-4 text-muted-foreground" />
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium truncate">{{ recordLabel(r) }}</p>
@@ -272,14 +283,31 @@ async function selectBook(id: string) {
               :class="{
                 'text-emerald-600 dark:text-emerald-400': r.type === 'income',
                 'text-rose-600 dark:text-rose-400': r.type === 'expense',
+                'text-blue-600 dark:text-blue-400': r.type === 'inflow',
+                'text-orange-600 dark:text-orange-400': r.type === 'outflow',
                 'text-muted-foreground': r.type === 'transfer',
               }"
             >
-              {{ r.type === "income" ? "+" : r.type === "expense" ? "-" : "" }}¥{{ fmt(r.amount) }}
+              {{ r.type === 'income' || r.type === 'inflow' ? '+' : r.type === 'expense' || r.type === 'outflow' ? '-' : '' }}¥{{ fmt(r.amount) }}
             </p>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- ── 快速记账表单 ──────────────────────────────────────────────────── -->
+    <RecordForm
+      :open="showRecordForm"
+      :book-id="bookStore.activeBookId ?? ''"
+      @update:open="showRecordForm = $event"
+      @success="load"
+    />
+    <EventForm
+      :open="showEventForm"
+      :book-id="bookStore.activeBookId ?? ''"
+      :event="null"
+      @update:open="showEventForm = $event"
+      @success="load"
+    />
   </div>
 </template>

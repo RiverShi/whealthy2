@@ -22,6 +22,8 @@ pub struct BookStats {
     pub net_worth: f64,
     pub income: f64,
     pub expense: f64,
+    /// 不计收支类（transfer/inflow/outflow）期间合计金额
+    pub other: f64,
     pub income_by_category: Vec<CategoryStat>,
     pub expense_by_category: Vec<CategoryStat>,
 }
@@ -47,6 +49,11 @@ pub fn get_book_stats(conn: &Connection, book_id: &str, from: &str, to: &str) ->
     )?;
     let expense: f64 = conn.query_row(
         "SELECT COALESCE(SUM(amount), 0) FROM records WHERE book_id = ?1 AND type = 'expense' AND happened_at >= ?2 AND happened_at <= ?3",
+        rusqlite::params![book_id, from, to],
+        |r| r.get(0),
+    )?;
+    let other: f64 = conn.query_row(
+        "SELECT COALESCE(SUM(amount), 0) FROM records WHERE book_id = ?1 AND type IN ('transfer', 'inflow', 'outflow') AND happened_at >= ?2 AND happened_at <= ?3",
         rusqlite::params![book_id, from, to],
         |r| r.get(0),
     )?;
@@ -95,6 +102,7 @@ pub fn get_book_stats(conn: &Connection, book_id: &str, from: &str, to: &str) ->
         net_worth: total_assets - total_liabilities,
         income,
         expense,
+        other,
         income_by_category,
         expense_by_category,
     })

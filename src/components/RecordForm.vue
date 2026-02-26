@@ -68,9 +68,9 @@ const categoryDomain = computed(() =>
   type.value === "income" ? ("income" as const) : ("expense" as const)
 );
 
-const showCategory = computed(() => type.value !== "transfer");
-const showFromAccount = computed(() => type.value === "expense" || type.value === "transfer");
-const showToAccount = computed(() => type.value === "income" || type.value === "transfer");
+const showCategory = computed(() => type.value === "income" || type.value === "expense");
+const showFromAccount = computed(() => ["expense", "transfer", "outflow"].includes(type.value));
+const showToAccount = computed(() => ["income", "transfer", "inflow"].includes(type.value));
 
 // 切换类型时重置无关字段
 watch(type, () => {
@@ -147,7 +147,9 @@ async function handleSubmit() {
 const typeOptions: { value: RecordType; label: string; color: string }[] = [
   { value: "expense", label: "支出", color: "text-rose-500" },
   { value: "income", label: "收入", color: "text-emerald-500" },
-  { value: "transfer", label: "不计收支", color: "text-muted-foreground" },
+  { value: "inflow", label: "流入", color: "text-blue-500" },
+  { value: "outflow", label: "流出", color: "text-orange-500" },
+  { value: "transfer", label: "划转", color: "text-muted-foreground" },
 ];
 </script>
 
@@ -157,12 +159,12 @@ const typeOptions: { value: RecordType; label: string; color: string }[] = [
       <!-- 类型选择 -->
       <div>
         <Label class="mb-2 block">类型</Label>
-        <div class="flex gap-2">
+        <div class="grid grid-cols-5 gap-1">
           <button
             v-for="opt in typeOptions"
             :key="opt.value"
             @click="type = opt.value"
-            class="flex-1 py-2.5 rounded-xl border text-sm font-medium transition-all"
+            class="py-2 rounded-xl border text-xs font-medium transition-all cursor-pointer"
             :class="type === opt.value
               ? 'border-primary bg-primary/10 ' + opt.color
               : 'border-border text-muted-foreground hover:border-primary/40'"

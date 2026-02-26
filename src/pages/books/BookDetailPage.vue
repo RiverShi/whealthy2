@@ -110,16 +110,14 @@ const filteredLiabilities = computed(() => {
 });
 
 // ── 按分类分组 ──────────────────────────────────────────────────────────────
-const expandedGroups = ref<Set<string>>(new Set(["__all_assets__", "__all_liabilities__"]));
+// 用「已折叠」Set（空集 = 全展开），避免在 computed 中产生副作用
+const collapsedGroups = ref<Set<string>>(new Set());
 
 function toggleGroup(id: string) {
-  if (expandedGroups.value.has(id)) {
-    expandedGroups.value.delete(id);
-  } else {
-    expandedGroups.value.add(id);
-  }
-  // trigger reactivity
-  expandedGroups.value = new Set(expandedGroups.value);
+  const s = new Set(collapsedGroups.value);
+  if (s.has(id)) s.delete(id);
+  else s.add(id);
+  collapsedGroups.value = s;
 }
 
 function groupEntries(entries: typeof entryStore.assets, prefix: string) {
@@ -130,7 +128,7 @@ function groupEntries(entries: typeof entryStore.assets, prefix: string) {
     const key = `${prefix}__${catId}`;
     if (!groups.has(key)) {
       groups.set(key, { id: key, name: catName, entries: [] });
-      expandedGroups.value.add(key);
+      // 注意：不在此处修改 collapsedGroups，新分组默认展开（不在折叠集里）
     }
     groups.get(key)!.entries.push(e);
   }
@@ -244,12 +242,12 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
               >
                 <ChevronRight
                   class="w-4 h-4 text-muted-foreground transition-transform duration-200 shrink-0"
-                  :class="expandedGroups.has(group.id) ? 'rotate-90' : ''"
+                  :class="!collapsedGroups.has(group.id) ? 'rotate-90' : ''"
                 />
                 <span class="text-sm font-medium flex-1">{{ group.name }}</span>
                 <span class="text-xs text-muted-foreground">{{ group.entries.length }} 项</span>
               </button>
-              <div v-if="expandedGroups.has(group.id)" class="border-t border-border/60">
+              <div v-if="!collapsedGroups.has(group.id)" class="border-t border-border/60">
                 <div
                   v-for="(entry, i) in group.entries"
                   :key="entry.id"
@@ -289,12 +287,12 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
               >
                 <ChevronRight
                   class="w-4 h-4 text-muted-foreground transition-transform duration-200 shrink-0"
-                  :class="expandedGroups.has(group.id) ? 'rotate-90' : ''"
+                  :class="!collapsedGroups.has(group.id) ? 'rotate-90' : ''"
                 />
                 <span class="text-sm font-medium flex-1">{{ group.name }}</span>
                 <span class="text-xs text-muted-foreground">{{ group.entries.length }} 项</span>
               </button>
-              <div v-if="expandedGroups.has(group.id)" class="border-t border-border/60">
+              <div v-if="!collapsedGroups.has(group.id)" class="border-t border-border/60">
                 <div
                   v-for="(entry, i) in group.entries"
                   :key="entry.id"
