@@ -9,7 +9,6 @@ import {
   Plus, 
   Edit2, 
   DollarSign,
-  PieChart,
   Wallet,
   Activity,
   CreditCard,
@@ -33,7 +32,19 @@ const editingEntry = ref<Entry | undefined>();
 const adjustingEntry = ref<Entry | undefined>();
 const viewingEntry = ref<Entry | undefined>();
 const confirmDeleteEntry = ref<Entry | undefined>();
-const activeTab = ref<'all' | 'assets' | 'liabilities'>('all');
+const activeTab = ref<'assets' | 'liabilities'>('assets');
+
+// ── 滑动切换 ──────────────────────────────────────────────────────────────
+let touchStartX = 0;
+function onTouchStart(e: TouchEvent) {
+  touchStartX = e.touches[0].clientX;
+}
+function onTouchEnd(e: TouchEvent) {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 50) {
+    activeTab.value = dx < 0 ? 'liabilities' : 'assets';
+  }
+}
 
 onMounted(() => {
   if (bookId.value) {
@@ -95,19 +106,8 @@ function handleFormSuccess() {
   entryStore.fetchEntries(bookId.value);
 }
 
-const filteredAssets = computed(() => {
-  if (activeTab.value === 'all' || activeTab.value === 'assets') {
-    return entryStore.assets;
-  }
-  return [];
-});
-
-const filteredLiabilities = computed(() => {
-  if (activeTab.value === 'all' || activeTab.value === 'liabilities') {
-    return entryStore.liabilities;
-  }
-  return [];
-});
+const filteredAssets = computed(() => entryStore.assets);
+const filteredLiabilities = computed(() => entryStore.liabilities);
 
 // ── 按分类分组 ──────────────────────────────────────────────────────────────
 // 用「已折叠」Set（空集 = 全展开），避免在 computed 中产生副作用
@@ -145,7 +145,7 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
     <!-- ══ 顶部固定头部 ════════════════════════════════════════════════════ -->
     <div class="sticky top-0 z-20 bg-card/95 backdrop-blur-xl border-b border-border">
       <div class="px-4 py-3">
-        <div class="flex items-center justify-between gap-2 mb-2.5">
+        <div class="flex items-center justify-between gap-2">
           <div>
             <p class="text-[11px] text-muted-foreground leading-none mb-0.5">{{ book?.name }}</p>
             <h1 class="text-xl font-bold leading-tight">资产</h1>
@@ -161,25 +161,6 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
             ><Plus class="w-3.5 h-3.5" />资产</button>
           </div>
         </div>
-
-        <!-- Tab 切换 -->
-        <div class="flex gap-1 bg-muted/50 p-1 rounded-xl">
-          <button
-            @click="activeTab = 'all'"
-            class="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
-            :class="activeTab === 'all' ? 'bg-card shadow text-foreground' : 'text-muted-foreground'"
-          >全部</button>
-          <button
-            @click="activeTab = 'assets'"
-            class="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
-            :class="activeTab === 'assets' ? 'bg-card shadow text-foreground' : 'text-muted-foreground'"
-          >资产</button>
-          <button
-            @click="activeTab = 'liabilities'"
-            class="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
-            :class="activeTab === 'liabilities' ? 'bg-card shadow text-foreground' : 'text-muted-foreground'"
-          >负债</button>
-        </div>
       </div>
     </div>
 
@@ -187,34 +168,36 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
     <div class="px-4 py-3 space-y-4 pb-6">
 
       <!-- ── 净资产汇总卡片 ──────────────────────────────────────────── -->
-      <div class="grid grid-cols-3 gap-2">
-        <!-- 总资产 -->
-        <div class="rounded-2xl border border-border bg-card p-3">
-          <div class="flex items-center gap-1 mb-1">
-            <TrendingUp class="w-3 h-3 text-emerald-500" />
-            <p class="text-[10px] text-muted-foreground font-medium">总资产</p>
+      <div class="rounded-2xl bg-primary px-5 py-4 text-primary-foreground">
+        <p class="text-xs font-medium opacity-70 mb-1">净资产</p>
+        <p class="text-3xl font-bold tabular-nums tracking-tight mb-3">¥{{ fmt(entryStore.netWorth) }}</p>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-1.5">
+            <TrendingUp class="w-3.5 h-3.5 opacity-70" />
+            <span class="text-xs opacity-70">总资产</span>
+            <span class="text-sm font-semibold tabular-nums">¥{{ fmt(entryStore.totalAssets) }}</span>
           </div>
-          <p class="text-base font-bold text-emerald-500 tabular-nums">¥{{ fmt(entryStore.totalAssets) }}</p>
-          <p class="text-[10px] text-muted-foreground mt-0.5">{{ entryStore.assets.length }} 项</p>
-        </div>
-        <!-- 总负债 -->
-        <div class="rounded-2xl border border-border bg-card p-3">
-          <div class="flex items-center gap-1 mb-1">
-            <TrendingDown class="w-3 h-3 text-rose-500" />
-            <p class="text-[10px] text-muted-foreground font-medium">总负债</p>
+          <div class="w-px bg-primary-foreground/20 self-stretch" />
+          <div class="flex items-center gap-1.5">
+            <TrendingDown class="w-3.5 h-3.5 opacity-70" />
+            <span class="text-xs opacity-70">负债</span>
+            <span class="text-sm font-semibold tabular-nums">¥{{ fmt(entryStore.totalLiabilities) }}</span>
           </div>
-          <p class="text-base font-bold text-rose-500 tabular-nums">¥{{ fmt(entryStore.totalLiabilities) }}</p>
-          <p class="text-[10px] text-muted-foreground mt-0.5">{{ entryStore.liabilities.length }} 项</p>
         </div>
-        <!-- 净资产 -->
-        <div class="rounded-2xl border border-primary/20 bg-primary p-3">
-          <div class="flex items-center gap-1 mb-1">
-            <PieChart class="w-3 h-3 text-primary-foreground/80" />
-            <p class="text-[10px] text-primary-foreground/80 font-medium">净资产</p>
-          </div>
-          <p class="text-base font-bold text-primary-foreground tabular-nums">¥{{ fmt(entryStore.netWorth) }}</p>
-          <p class="text-[10px] text-primary-foreground/70 mt-0.5">资产-负债</p>
-        </div>
+      </div>
+
+      <!-- ── Tab 切换（资产 / 负债） ──────────────────────────────────── -->
+      <div class="flex gap-1 bg-muted/50 p-1 rounded-xl">
+        <button
+          @click="activeTab = 'assets'"
+          class="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+          :class="activeTab === 'assets' ? 'bg-card shadow text-foreground' : 'text-muted-foreground'"
+        >资产</button>
+        <button
+          @click="activeTab = 'liabilities'"
+          class="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+          :class="activeTab === 'liabilities' ? 'bg-card shadow text-foreground' : 'text-muted-foreground'"
+        >负债</button>
       </div>
 
       <!-- ── 加载中 ──────────────────────────────────────────────────── -->
@@ -225,9 +208,9 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
         <p class="text-muted-foreground text-sm">加载中…</p>
       </div>
 
-      <div v-else class="space-y-4">
+      <div v-else class="space-y-4" @touchstart="onTouchStart" @touchend="onTouchEnd">
         <!-- ── 资产列表（按分类折叠分组） ─────────────────────────────── -->
-        <section v-if="groupedAssets.length > 0">
+        <section v-if="activeTab === 'assets' && groupedAssets.length > 0">
           <div class="flex items-center gap-2 mb-2 px-1">
             <Wallet class="w-4 h-4 text-emerald-500" />
             <h2 class="text-sm font-semibold text-muted-foreground">资产</h2>
@@ -273,7 +256,7 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
         </section>
 
         <!-- ── 负债列表（按分类折叠分组） ─────────────────────────────── -->
-        <section v-if="groupedLiabilities.length > 0">
+        <section v-if="activeTab === 'liabilities' && groupedLiabilities.length > 0">
           <div class="flex items-center gap-2 mb-2 px-1">
             <CreditCard class="w-4 h-4 text-rose-500" />
             <h2 class="text-sm font-semibold text-muted-foreground">负债</h2>
@@ -319,13 +302,13 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
 
         <!-- 空状态 -->
         <div
-          v-if="!filteredAssets.length && !filteredLiabilities.length && !entryStore.loading"
+          v-if="(activeTab === 'assets' ? !groupedAssets.length : !groupedLiabilities.length) && !entryStore.loading"
           class="text-center py-16"
         >
           <div class="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-4 mx-auto">
             <Wallet class="w-7 h-7 text-muted-foreground" />
           </div>
-          <p class="text-base font-medium mb-1">还没有资产条目</p>
+          <p class="text-base font-medium mb-1">还没有{{ activeTab === 'assets' ? '资产' : '负债' }}条目</p>
           <p class="text-sm text-muted-foreground">点击上方「资产」或「负债」添加</p>
         </div>
       </div>
