@@ -110,7 +110,7 @@ const showEventForm = ref(false);
 </script>
 
 <template>
-  <div class="min-h-full bg-background" style="padding-top: env(safe-area-inset-top)">
+  <div class="min-h-full bg-background">
 
     <!-- ── 顶部账本选择器 ──────────────────────────────────────────────── -->
     <div class="sticky top-0 z-20 bg-background/95 backdrop-blur-xl px-4 pt-3 pb-2">
@@ -134,7 +134,7 @@ const showEventForm = ref(false);
         @click.self="showBookPicker = false"
       >
         <div
-          class="absolute left-4 top-[calc(env(safe-area-inset-top)+58px)] bg-card border border-border rounded-2xl shadow-xl overflow-hidden min-w-[220px]"
+          class="absolute left-4 top-[58px] bg-card border border-border rounded-2xl shadow-xl overflow-hidden min-w-[220px]"
         >
           <div
             v-for="book in bookStore.books"

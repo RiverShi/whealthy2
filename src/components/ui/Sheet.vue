@@ -52,9 +52,10 @@ function close() {
       <div
         v-if="localOpen"
         class="fixed right-0 top-0 bottom-0 z-50 w-full max-w-lg bg-card border-l border-border shadow-2xl flex flex-col"
+        style="padding-top: env(safe-area-inset-top);"
       >
         <!-- Header -->
-        <div class="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <h2 class="text-lg font-semibold">{{ title }}</h2>
           <button
             @click="close"
@@ -70,7 +71,11 @@ function close() {
         </div>
 
         <!-- Footer -->
-        <div v-if="$slots.footer" class="px-6 py-4 border-t border-border">
+        <div
+          v-if="$slots.footer"
+          class="px-6 py-4 border-t border-border shrink-0"
+          style="padding-bottom: max(env(safe-area-inset-bottom), 16px);"
+        >
           <slot name="footer" />
         </div>
       </div>

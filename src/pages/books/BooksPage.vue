@@ -64,7 +64,7 @@ function formatDate(dateStr: string) {
 </script>
 
 <template>
-  <div class="min-h-full bg-background" style="padding-top: env(safe-area-inset-top)">
+  <div class="min-h-full bg-background">
 
     <!-- ── 顶部导航头 ──────────────────────────────────────────────────── -->
     <div class="sticky top-0 z-20 bg-card/95 backdrop-blur-xl border-b border-border">
@@ -249,8 +249,8 @@ function formatDate(dateStr: string) {
           </div>
           <div class="flex gap-3">
             <button
-              @click="showCreate = false; newBookName = ''"
-                @click="showCreate = false; newBookName = ''; createError = ''"
+              @click="showCreate = false; newBookName = ''; createError = ''"
+              class="flex-1 py-3.5 rounded-2xl border border-border text-sm font-medium cursor-pointer"
             >取消</button>
             <button
               :disabled="!newBookName.trim() || creating"

@@ -223,7 +223,7 @@ function fmt(n: number) {
 </script>
 
 <template>
-  <div class="min-h-full bg-background" style="padding-top: env(safe-area-inset-top)">
+  <div class="min-h-full bg-background">
     <!-- ── 顶栏 ────────────────────────────────────────────────────────────── -->
     <div class="sticky top-0 z-20 bg-card/95 backdrop-blur-xl border-b border-border">
       <div class="px-4 py-3">

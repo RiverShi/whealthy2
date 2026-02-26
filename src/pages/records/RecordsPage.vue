@@ -9,7 +9,10 @@ import { ChevronLeft, ChevronRight, ChevronDown, Pencil, Trash2, TrendingUp, Tre
 import RecordForm from "@/components/RecordForm.vue";
 import RecordEditForm from "@/components/RecordEditForm.vue";
 import RecordDetailSheet from "@/components/RecordDetailSheet.vue";
+import { useRoute, useRouter } from "vue-router";
 
+const route = useRoute();
+const router = useRouter();
 const bookStore = useBookStore();
 const bookId = computed(() => bookStore.activeBookId ?? "");
 const entryStore = useEntryStore();
@@ -199,7 +202,19 @@ function recordNote(r: FlowRecord): string {
 
 // ── 表单状态 ──────────────────────────────────────────────────────────────
 const showRecordForm = ref(false);
-const showRecordEdit = ref(false);
+// FAB 传入 ?create=1 时自动弹出新增表单
+watch(() => route.query.create, (val) => {
+  if (val === '1') {
+    showRecordForm.value = true;
+    router.replace({ path: '/records' });
+  }
+}, { immediate: true });// FAB 传入 create=1 时自动弹出表单
+watch(() => route.query.create, (val) => {
+  if (val === '1') {
+    showRecordForm.value = true;
+    router.replace({ path: '/records' });
+  }
+}, { immediate: true });const showRecordEdit = ref(false);
 const editingRecord = ref<FlowRecord | null>(null);
 const viewingRecord = ref<FlowRecord | null>(null);
 const confirmDeleteId = ref<string | null>(null);
@@ -221,7 +236,7 @@ const viewRecord_eventName = computed(() => viewingRecord.value?.eventId ? event
 </script>
 
 <template>
-  <div class="min-h-full bg-background" style="padding-top: env(safe-area-inset-top)">
+  <div class="min-h-full bg-background">
 
     <!-- ══ 顶部 ═════════════════════════════════════════════════════════ -->
     <div class="sticky top-0 z-20 bg-background/95 backdrop-blur-xl border-b border-border">

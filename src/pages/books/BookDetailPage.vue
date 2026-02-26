@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref, computed, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useEntryStore } from "@/stores/entries";
 import { useBookStore } from "@/stores/books";
 import { useCategoryStore } from "@/stores/categories";
+import { entryApi } from "@/api/entries";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -13,12 +15,16 @@ import {
   Activity,
   CreditCard,
   ChevronRight,
+  CheckCircle2,
+  X,
 } from "lucide-vue-next";
 import EntryForm from "@/components/EntryForm.vue";
 import AdjustValueSheet from "@/components/AdjustValueSheet.vue";
 import EntryDetailSheet from "@/components/EntryDetailSheet.vue";
 import type { Entry, EntryKind } from "@/api/entries";
 
+const route = useRoute();
+const router = useRouter();
 const entryStore = useEntryStore();
 const bookStore = useBookStore();
 const categoryStore = useCategoryStore();
@@ -33,6 +39,53 @@ const adjustingEntry = ref<Entry | undefined>();
 const viewingEntry = ref<Entry | undefined>();
 const confirmDeleteEntry = ref<Entry | undefined>();
 const activeTab = ref<'assets' | 'liabilities'>('assets');
+
+// ── 快速编辑模式 ─────────────────────────────────────────────────────────
+const quickEditMode = ref(false);
+const quickEditValues = ref<Record<string, string>>({});
+const quickEditSaving = ref(false);
+
+function enterQuickEdit() {
+  // 将所有条目当前值填入编辑 map
+  const vals: Record<string, string> = {};
+  for (const e of [...entryStore.assets, ...entryStore.liabilities]) {
+    vals[e.id] = String(e.value);
+  }
+  quickEditValues.value = vals;
+  quickEditMode.value = true;
+}
+
+function exitQuickEdit() {
+  quickEditMode.value = false;
+  quickEditValues.value = {};
+}
+
+async function confirmQuickEdit() {
+  quickEditSaving.value = true;
+  try {
+    const all = [...entryStore.assets, ...entryStore.liabilities];
+    const changed = all.filter(e => {
+      const v = parseFloat(quickEditValues.value[e.id] ?? '');
+      return !isNaN(v) && v !== e.value;
+    });
+    await Promise.all(
+      changed.map(e => entryApi.adjustValue(e.id, parseFloat(quickEditValues.value[e.id]), '快速更新'))
+    );
+    await entryStore.fetchEntries(bookId.value);
+    quickEditMode.value = false;
+    quickEditValues.value = {};
+  } finally {
+    quickEditSaving.value = false;
+  }
+}
+
+// FAB 传入 ?quickedit=1 时进入快速编辑
+watch(() => route.query.quickedit, (val) => {
+  if (val === '1') {
+    enterQuickEdit();
+    router.replace({ path: '/assets' });
+  }
+}, { immediate: true });
 
 // ── 滑动切换 ──────────────────────────────────────────────────────────────
 let touchStartX = 0;
@@ -89,6 +142,7 @@ function handleAdjustClick(entry: Entry) {
 }
 
 function handleViewClick(entry: Entry) {
+  if (quickEditMode.value) return;
   viewingEntry.value = entry;
 }
 
@@ -110,10 +164,10 @@ const filteredAssets = computed(() => entryStore.assets);
 const filteredLiabilities = computed(() => entryStore.liabilities);
 
 // ── 按分类分组 ──────────────────────────────────────────────────────────────
-// 用「已折叠」Set（空集 = 全展开），避免在 computed 中产生副作用
 const collapsedGroups = ref<Set<string>>(new Set());
 
 function toggleGroup(id: string) {
+  if (quickEditMode.value) return; // 快速编辑中禁止折叠
   const s = new Set(collapsedGroups.value);
   if (s.has(id)) s.delete(id);
   else s.add(id);
@@ -128,7 +182,6 @@ function groupEntries(entries: typeof entryStore.assets, prefix: string) {
     const key = `${prefix}__${catId}`;
     if (!groups.has(key)) {
       groups.set(key, { id: key, name: catName, entries: [] });
-      // 注意：不在此处修改 collapsedGroups，新分组默认展开（不在折叠集里）
     }
     groups.get(key)!.entries.push(e);
   }
@@ -140,7 +193,7 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
 </script>
 
 <template>
-  <div class="min-h-full bg-background" style="padding-top: env(safe-area-inset-top)">
+  <div class="min-h-full bg-background">
 
     <!-- ══ 顶部固定头部 ════════════════════════════════════════════════════ -->
     <div class="sticky top-0 z-20 bg-card/95 backdrop-blur-xl border-b border-border">
@@ -165,7 +218,7 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
     </div>
 
     <!-- ══ 内容区 ════════════════════════════════════════════════════════ -->
-    <div class="px-4 py-3 space-y-4 pb-6">
+    <div class="px-4 py-3 space-y-4" :class="quickEditMode ? 'pb-32' : 'pb-6'">
 
       <!-- ── 净资产汇总卡片 ──────────────────────────────────────────── -->
       <div class="rounded-2xl bg-primary px-5 py-4 text-primary-foreground">
@@ -230,12 +283,15 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
                 <span class="text-sm font-medium flex-1">{{ group.name }}</span>
                 <span class="text-xs text-muted-foreground">{{ group.entries.length }} 项</span>
               </button>
-              <div v-if="!collapsedGroups.has(group.id)" class="border-t border-border/60">
+              <div v-if="quickEditMode || !collapsedGroups.has(group.id)" class="border-t border-border/60">
                 <div
                   v-for="(entry, i) in group.entries"
                   :key="entry.id"
-                  class="flex items-center gap-3 px-4 py-3.5 cursor-pointer active:bg-accent/40 transition-colors"
-                  :class="i < group.entries.length - 1 ? 'border-b border-border/60' : ''"
+                  class="flex items-center gap-3 px-4 py-3.5 transition-colors"
+                  :class="[
+                    i < group.entries.length - 1 ? 'border-b border-border/60' : '',
+                    !quickEditMode ? 'cursor-pointer active:bg-accent/40' : ''
+                  ]"
                   @click="handleViewClick(entry)"
                 >
                   <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
@@ -245,10 +301,22 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
                     <p class="text-sm font-semibold truncate">{{ entry.name }}</p>
                     <p class="text-xs text-muted-foreground">{{ entry.isAccount ? '账户' : '资产' }}</p>
                   </div>
-                  <div class="text-right mr-1">
+                  <!-- 快速编辑模式：内联 input -->
+                  <div v-if="quickEditMode" class="flex items-center gap-1 shrink-0">
+                    <span class="text-sm text-muted-foreground">¥</span>
+                    <input
+                      type="number"
+                      inputmode="decimal"
+                      step="0.01"
+                      v-model="quickEditValues[entry.id]"
+                      class="w-28 text-right text-sm font-bold tabular-nums bg-muted/60 border border-primary/30 rounded-lg px-2 py-1.5 focus:outline-none focus:border-primary text-emerald-600"
+                      @click.stop
+                    />
+                  </div>
+                  <div v-else class="text-right mr-1">
                     <p class="text-sm font-bold text-emerald-500 tabular-nums">¥{{ fmt(entry.value) }}</p>
                   </div>
-                  <ChevronRight class="w-4 h-4 text-muted-foreground/50 shrink-0" />
+                  <ChevronRight v-if="!quickEditMode" class="w-4 h-4 text-muted-foreground/50 shrink-0" />
                 </div>
               </div>
             </div>
@@ -275,12 +343,15 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
                 <span class="text-sm font-medium flex-1">{{ group.name }}</span>
                 <span class="text-xs text-muted-foreground">{{ group.entries.length }} 项</span>
               </button>
-              <div v-if="!collapsedGroups.has(group.id)" class="border-t border-border/60">
+              <div v-if="quickEditMode || !collapsedGroups.has(group.id)" class="border-t border-border/60">
                 <div
                   v-for="(entry, i) in group.entries"
                   :key="entry.id"
-                  class="flex items-center gap-3 px-4 py-3.5 cursor-pointer active:bg-accent/40 transition-colors"
-                  :class="i < group.entries.length - 1 ? 'border-b border-border/60' : ''"
+                  class="flex items-center gap-3 px-4 py-3.5 transition-colors"
+                  :class="[
+                    i < group.entries.length - 1 ? 'border-b border-border/60' : '',
+                    !quickEditMode ? 'cursor-pointer active:bg-accent/40' : ''
+                  ]"
                   @click="handleViewClick(entry)"
                 >
                   <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center shrink-0">
@@ -290,10 +361,22 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
                     <p class="text-sm font-semibold truncate">{{ entry.name }}</p>
                     <p class="text-xs text-muted-foreground">{{ entry.valuationType === 'fixed' ? '固定值' : '手动估值' }}</p>
                   </div>
-                  <div class="text-right mr-1">
+                  <!-- 快速编辑模式：内联 input -->
+                  <div v-if="quickEditMode" class="flex items-center gap-1 shrink-0">
+                    <span class="text-sm text-muted-foreground">¥</span>
+                    <input
+                      type="number"
+                      inputmode="decimal"
+                      step="0.01"
+                      v-model="quickEditValues[entry.id]"
+                      class="w-28 text-right text-sm font-bold tabular-nums bg-muted/60 border border-destructive/30 rounded-lg px-2 py-1.5 focus:outline-none focus:border-destructive text-rose-600"
+                      @click.stop
+                    />
+                  </div>
+                  <div v-else class="text-right mr-1">
                     <p class="text-sm font-bold text-rose-500 tabular-nums">¥{{ fmt(entry.value) }}</p>
                   </div>
-                  <ChevronRight class="w-4 h-4 text-muted-foreground/50 shrink-0" />
+                  <ChevronRight v-if="!quickEditMode" class="w-4 h-4 text-muted-foreground/50 shrink-0" />
                 </div>
               </div>
             </div>
@@ -313,6 +396,39 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
         </div>
       </div>
     </div>
+
+    <!-- ── 快速编辑底部确认栏 ────────────────────────────────────────── -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-transform duration-200"
+        enter-from-class="translate-y-full"
+        enter-to-class="translate-y-0"
+        leave-active-class="transition-transform duration-200"
+        leave-from-class="translate-y-0"
+        leave-to-class="translate-y-full"
+      >
+        <div
+          v-if="quickEditMode"
+          class="fixed left-0 right-0 z-[60] bg-card border-t-2 border-primary shadow-2xl px-4 pt-4"
+          style="bottom: calc(49px + env(safe-area-inset-bottom)); padding-bottom: 12px;"
+        >
+          <div class="flex gap-3 items-center">
+            <button
+              @click="exitQuickEdit"
+              class="px-5 py-3 rounded-2xl border border-border text-sm font-medium cursor-pointer"
+            >取消</button>
+            <button
+              @click="confirmQuickEdit"
+              :disabled="quickEditSaving"
+              class="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-primary text-primary-foreground text-sm font-semibold cursor-pointer disabled:opacity-60"
+            >
+              <CheckCircle2 class="w-4 h-4" />
+              {{ quickEditSaving ? '保存中…' : '确认全部' }}
+            </button>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- 表单 -->
     <EntryForm

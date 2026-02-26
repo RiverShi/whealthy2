@@ -90,7 +90,7 @@ const colorPresets = [
 </script>
 
 <template>
-  <div class="min-h-full bg-background" style="padding-top: env(safe-area-inset-top)">
+  <div class="min-h-full bg-background">
     <!-- 顶部导航头 -->
     <div class="sticky top-0 z-20 bg-card/95 backdrop-blur-xl border-b border-border">
       <div class="flex items-center gap-3 px-4 py-3">

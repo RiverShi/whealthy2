@@ -67,7 +67,7 @@ const menuGroups = [
 </script>
 
 <template>
-  <div class="min-h-full bg-background" style="padding-top: env(safe-area-inset-top)">
+  <div class="min-h-full bg-background">
 
     <!-- ── 页头 ────────────────────────────────────────────────────────── -->
     <div class="px-4 pt-4 pb-2">
