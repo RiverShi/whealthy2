@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use rusqlite::Connection;
 use tauri::{State, Manager};
 use error::{AppError, AppResult};
-use commands::{books as cmd_books, entries as cmd_entries, categories as cmd_categories, records as cmd_records, snapshots as cmd_snapshots};
+use commands::{books as cmd_books, entries as cmd_entries, categories as cmd_categories, records as cmd_records, snapshots as cmd_snapshots, export_import as cmd_export_import};
 use cmd_books::Book;
 use cmd_entries::{Entry, EntryAdjustment, CreateEntryParams, EntryFilter};
 use cmd_categories::{Category, Tag};
@@ -279,6 +279,20 @@ fn check_and_run_snapshot_tasks(state: State<DbState>) -> AppResult<()> {
     cmd_snapshots::check_and_run_snapshot_tasks(&conn)
 }
 
+// ─── 导入导出 Commands ────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn export_book(state: State<DbState>, book_id: String) -> AppResult<String> {
+    let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
+    cmd_export_import::export_book(&conn, &book_id)
+}
+
+#[tauri::command]
+fn import_book(state: State<DbState>, json_data: String, new_name: Option<String>) -> AppResult<Book> {
+    let conn = state.0.lock().map_err(|_| AppError::InvalidInput("锁失败".into()))?;
+    cmd_export_import::import_book(&conn, &json_data, new_name.as_deref())
+}
+
 // ─── 应用入口 ─────────────────────────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -319,6 +333,7 @@ pub fn run() {
             list_snapshot_tasks, get_snapshot_task_for_book,
             create_snapshot_task, update_snapshot_task, delete_snapshot_task,
             check_and_run_snapshot_tasks,
+            export_book, import_book,
         ])
         .run(tauri::generate_context!())
         .expect("运行 Tauri 应用失败");

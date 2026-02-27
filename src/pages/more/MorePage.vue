@@ -13,8 +13,12 @@ import {
   Sun,
   Wallet,
   ChevronDown,
+  Upload,
+  Download,
+  Loader2,
 } from "lucide-vue-next";
 import { useBookStore } from "@/stores/books";
+import { exportBook, importBook, shareOrDownloadJson } from "@/api/export_import";
 
 const bookStore = useBookStore();
 const router = useRouter();
@@ -23,10 +27,25 @@ const showBookPicker = ref(false);
 const showNewBookInput = ref(false);
 const newBookName = ref("");
 
+// 导入导出状态
+const exporting = ref(false);
+const importing = ref(false);
+const importError = ref("");
+const importSuccess = ref("");
+let fileInput: HTMLInputElement | null = null;
+
 onMounted(async () => {
   await bookStore.fetchBooks();
   // 同步当前主题状态
   isDark.value = document.documentElement.classList.contains("dark");
+
+  // 初始化隐藏文件输入
+  fileInput = document.createElement("input");
+  fileInput.type = "file";
+  fileInput.accept = ".json,.wealthy";
+  fileInput.style.display = "none";
+  fileInput.addEventListener("change", handleFileSelected);
+  document.body.appendChild(fileInput);
 });
 
 function toggleTheme() {
@@ -47,6 +66,54 @@ async function createAndSelectBook() {
   newBookName.value = "";
   showNewBookInput.value = false;
   showBookPicker.value = false;
+}
+
+/** 导出当前账本 */
+async function handleExport() {
+  const book = bookStore.activeBook;
+  if (!book) return;
+  exporting.value = true;
+  importError.value = "";
+  importSuccess.value = "";
+  try {
+    const json = await exportBook(book.id);
+    const date = new Date().toISOString().slice(0, 10);
+    const filename = `${book.name}_${date}.wealthy`;
+    await shareOrDownloadJson(json, filename);
+  } catch (e: any) {
+    importError.value = `导出失败：${e?.message ?? e}`;
+  } finally {
+    exporting.value = false;
+  }
+}
+
+/** 点击导入按钮 → 弹出文件选择器 */
+function handleImportClick() {
+  importError.value = "";
+  importSuccess.value = "";
+  fileInput?.click();
+}
+
+/** 文件选择完成后读取内容并调用导入 */
+async function handleFileSelected(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = ""; // 允许重复选同一文件
+  if (!file) return;
+  importing.value = true;
+  importError.value = "";
+  importSuccess.value = "";
+  try {
+    const text = await file.text();
+    const newBook = await importBook(text);
+    await bookStore.fetchBooks();
+    bookStore.setActiveBook(newBook.id);
+    importSuccess.value = `已导入账本「${newBook.name}」`;
+  } catch (e: any) {
+    importError.value = `导入失败：${e?.message ?? e}`;
+  } finally {
+    importing.value = false;
+  }
 }
 
 const menuGroups = [
@@ -165,6 +232,57 @@ const menuGroups = [
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium">{{ item.label }}</p>
               <p class="text-xs text-muted-foreground mt-0.5">{{ item.desc }}</p>
+            </div>
+            <ChevronRight class="w-4 h-4 text-muted-foreground shrink-0" />
+          </button>
+        </div>
+      </div>
+
+      <!-- ── 数据管理（导入/导出） ──────────────────────────────────────── -->
+      <div>
+        <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">数据管理</p>
+
+        <!-- 反馈提示 -->
+        <div v-if="importSuccess" class="mb-2 px-4 py-2.5 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-xl text-sm text-green-700 dark:text-green-400">
+          {{ importSuccess }}
+        </div>
+        <div v-if="importError" class="mb-2 px-4 py-2.5 bg-destructive/10 border border-destructive/20 rounded-xl text-sm text-destructive">
+          {{ importError }}
+        </div>
+
+        <div class="bg-card border border-border rounded-2xl overflow-hidden">
+          <!-- 导出 -->
+          <button
+            @click="handleExport"
+            :disabled="!bookStore.activeBook || exporting"
+            class="w-full flex items-center gap-3 px-4 py-4 border-b border-border/60 hover:bg-accent transition-colors cursor-pointer text-left disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Loader2 v-if="exporting" class="w-[18px] h-[18px] text-primary animate-spin" />
+              <Upload v-else class="w-[18px] h-[18px] text-primary" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium">导出当前账本</p>
+              <p class="text-xs text-muted-foreground mt-0.5">
+                {{ bookStore.activeBook ? `导出「${bookStore.activeBook.name}」为 .wealthy 文件` : '请先选择账本' }}
+              </p>
+            </div>
+            <ChevronRight class="w-4 h-4 text-muted-foreground shrink-0" />
+          </button>
+
+          <!-- 导入 -->
+          <button
+            @click="handleImportClick"
+            :disabled="importing"
+            class="w-full flex items-center gap-3 px-4 py-4 hover:bg-accent transition-colors cursor-pointer text-left disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Loader2 v-if="importing" class="w-[18px] h-[18px] text-primary animate-spin" />
+              <Download v-else class="w-[18px] h-[18px] text-primary" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium">导入账本</p>
+              <p class="text-xs text-muted-foreground mt-0.5">从 .wealthy 或 .json 文件还原账本</p>
             </div>
             <ChevronRight class="w-4 h-4 text-muted-foreground shrink-0" />
           </button>
