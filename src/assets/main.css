@@ -101,6 +101,11 @@
   * {
     @apply border-border;
   }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
@@ -109,6 +114,10 @@
   }
   
   /* 移动端隐藏滚动条 */
+  #app {
+    height: 100%;
+    overflow: hidden;
+  }
   ::-webkit-scrollbar {
     width: 0;
     height: 0;
@@ -228,4 +237,9 @@
   to {
     opacity: 0;
   }
+}
+
+/* 防止 iOS 输入框聚焦时自动放大（font-size < 16px 会触发） */
+input, textarea, select {
+  font-size: 16px !important;
 }

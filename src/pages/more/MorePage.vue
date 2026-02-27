@@ -148,7 +148,7 @@ const menuGroups = [
     </div>
 
     <!-- ── 功能菜单 ────────────────────────────────────────────────────── -->
-    <div class="px-4 space-y-4 pb-8">
+    <div class="px-4 space-y-4 pb-3">
       <div v-for="group in menuGroups" :key="group.title">
         <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">{{ group.title }}</p>
         <div class="bg-card border border-border rounded-2xl overflow-hidden">

@@ -161,7 +161,7 @@ const showEventForm = ref(false);
       </div>
     </Teleport>
 
-    <div class="px-4 pb-8 space-y-4">
+    <div class="px-4 pb-3 space-y-4">
 
       <!-- ── 净资产卡片 ──────────────────────────────────────────────────── -->
       <div class="rounded-3xl bg-primary p-6 text-primary-foreground">

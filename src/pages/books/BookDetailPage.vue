@@ -9,14 +9,11 @@ import {
   TrendingUp, 
   TrendingDown, 
   Plus, 
-  Edit2, 
-  DollarSign,
   Wallet,
   Activity,
   CreditCard,
   ChevronRight,
   CheckCircle2,
-  X,
 } from "lucide-vue-next";
 import EntryForm from "@/components/EntryForm.vue";
 import AdjustValueSheet from "@/components/AdjustValueSheet.vue";
@@ -137,9 +134,10 @@ function handleEditClick(entry: Entry) {
   showCreateForm.value = true;
 }
 
-function handleAdjustClick(entry: Entry) {
-  adjustingEntry.value = entry;
-}
+function closeAdjust() { adjustingEntry.value = undefined; }
+function setAdjust(e: Entry) { adjustingEntry.value = e; }
+function closeView() { viewingEntry.value = undefined; }
+function cancelDelete() { confirmDeleteEntry.value = undefined; }
 
 function handleViewClick(entry: Entry) {
   if (quickEditMode.value) return;
@@ -410,7 +408,7 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
         <div
           v-if="quickEditMode"
           class="fixed left-0 right-0 z-[60] bg-card border-t-2 border-primary shadow-2xl px-4 pt-4"
-          style="bottom: calc(49px + env(safe-area-inset-bottom)); padding-bottom: 12px;"
+          style="bottom: calc(36px + env(safe-area-inset-bottom)); padding-bottom: 12px;"
         >
           <div class="flex gap-3 items-center">
             <button
@@ -442,8 +440,9 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
 
     <!-- 价值调整面板 -->
     <AdjustValueSheet
+      v-if="adjustingEntry"
       :open="!!adjustingEntry"
-      @update:open="(val) => { if (!val) adjustingEntry = undefined }"
+      @update:open="(val) => { if (!val) closeAdjust() }"
       :entry="adjustingEntry"
       @success="handleFormSuccess"
     />
@@ -453,8 +452,8 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
       :open="!!viewingEntry"
       :entry="viewingEntry"
       :category-name="viewingEntry?.categoryL1Id ? entryCategoryMap[viewingEntry.categoryL1Id] : undefined"
-      @update:open="(val) => { if (!val) viewingEntry = undefined }"
-      @adjust="(e) => { adjustingEntry = e }"
+      @update:open="(val) => { if (!val) closeView() }"
+      @adjust="setAdjust"
       @edit="(e) => { handleEditClick(e) }"
       @delete="handleDeleteFromDetail"
     />
@@ -468,7 +467,7 @@ const groupedLiabilities = computed(() => groupEntries(filteredLiabilities.value
           <p class="text-sm text-muted-foreground mb-6">此操作不可撤销。</p>
           <div class="flex gap-3">
             <button
-              @click="confirmDeleteEntry = undefined"
+              @click="cancelDelete()"
               class="flex-1 py-3.5 rounded-2xl border border-border text-sm font-medium hover:bg-accent transition-colors cursor-pointer"
             >取消</button>
             <button

@@ -6,7 +6,7 @@ import {
 } from "lucide-vue-next";
 import type { FlowRecord, RecordType } from "@/api/records";
 
-const props = defineProps<{
+defineProps<{
   open?: boolean;
   record?: FlowRecord;
   categoryName?: string;
@@ -37,6 +37,8 @@ const typeConfig: Record<RecordType, { label: string; icon: typeof ArrowDownCirc
   income:   { label: "收入",   icon: ArrowDownCircle,  color: "text-emerald-500", bg: "bg-emerald-500/10", amountPrefix: "+" },
   expense:  { label: "支出",   icon: ArrowUpCircle,    color: "text-rose-500",    bg: "bg-rose-500/10",    amountPrefix: "-" },
   transfer: { label: "转账",   icon: ArrowLeftRight,   color: "text-sky-500",     bg: "bg-sky-500/10",     amountPrefix: "" },
+  inflow:   { label: "流入",   icon: ArrowDownCircle,  color: "text-emerald-500", bg: "bg-emerald-500/10", amountPrefix: "+" },
+  outflow:  { label: "流出",   icon: ArrowUpCircle,    color: "text-rose-500",    bg: "bg-rose-500/10",    amountPrefix: "-" },
 };
 </script>
 

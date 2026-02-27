@@ -265,7 +265,7 @@ function fmt(n: number) {
       </div>
     </div>
 
-    <div v-else class="px-4 py-3 space-y-4 pb-8">
+    <div v-else class="px-4 py-3 space-y-4 pb-3">
 
       <!-- ── 净资产大卡 ─────────────────────────────────────────────────────── -->
       <div class="rounded-2xl border border-border bg-card p-6">

@@ -74,7 +74,7 @@ function close() {
         <div
           v-if="$slots.footer"
           class="px-6 py-4 border-t border-border shrink-0"
-          style="padding-bottom: max(env(safe-area-inset-bottom), 16px);"
+          style="padding-bottom: 16px;"
         >
           <slot name="footer" />
         </div>

@@ -130,7 +130,7 @@ async function handleDelete(id: string) {
       </div>
     </div>
 
-    <div class="px-4 py-3 pb-8">
+    <div class="px-4 py-3 pb-3">
 
     <div class="flex gap-1 bg-muted/50 p-1 rounded-xl mb-4">
       <button

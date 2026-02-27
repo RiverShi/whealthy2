@@ -297,7 +297,7 @@ const viewRecord_eventName = computed(() => viewingRecord.value?.eventId ? event
     </div>
 
     <!-- ══ 内容区 ════════════════════════════════════════════════════════ -->
-    <div class="px-4 py-3 pb-8 space-y-4">
+    <div class="px-4 py-3 pb-3 space-y-4">
 
       <!-- 骨架屏 -->
       <template v-if="loading">

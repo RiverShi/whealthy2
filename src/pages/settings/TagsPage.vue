@@ -112,7 +112,7 @@ const colorPresets = [
       </div>
     </div>
 
-    <div class="px-4 py-3 pb-8">
+    <div class="px-4 py-3 pb-3">
 
     <!-- Tab -->
     <div class="flex gap-1 bg-muted/50 p-1 rounded-xl mb-4">
@@ -175,7 +175,7 @@ const colorPresets = [
         @click.self="showCreate = false"
       >
         <div class="bg-card border border-border rounded-t-3xl w-full max-w-lg p-6 shadow-xl animate-in"
-             style="padding-bottom: calc(env(safe-area-inset-bottom) + 24px)">
+             style="padding-bottom: 24px">
           <div class="w-10 h-1 bg-border rounded-full mx-auto mb-5" />
           <h2 class="text-lg font-bold mb-5">{{ editingTag ? "编辑标签" : "新建标签" }}</h2>
 

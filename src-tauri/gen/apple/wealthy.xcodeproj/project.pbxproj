@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -22,32 +22,32 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		010BF0CA53F65E7FF6F9A6E6 /* main.rs */ = {isa = PBXFileReference; path = main.rs; sourceTree = "<group>"; };
+		010BF0CA53F65E7FF6F9A6E6 /* main.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.rs; sourceTree = "<group>"; };
 		03617A1BBA27AE6C31549C56 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		112E8F27BCAC3DC60F6C1649 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		1DC3CEE3B8A907AAE2FCCAE2 /* snapshots.rs */ = {isa = PBXFileReference; path = snapshots.rs; sourceTree = "<group>"; };
-		2D7551E3528A8444016268A8 /* error.rs */ = {isa = PBXFileReference; path = error.rs; sourceTree = "<group>"; };
-		35BA851555FFBFACE4677006 /* lib.rs */ = {isa = PBXFileReference; path = lib.rs; sourceTree = "<group>"; };
+		1DC3CEE3B8A907AAE2FCCAE2 /* snapshots.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = snapshots.rs; sourceTree = "<group>"; };
+		2D7551E3528A8444016268A8 /* error.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = error.rs; sourceTree = "<group>"; };
+		35BA851555FFBFACE4677006 /* lib.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = lib.rs; sourceTree = "<group>"; };
 		35D1A5E3C444254C62EC5F7C /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = assets; sourceTree = SOURCE_ROOT; };
 		3FFF09FFEA284CAB2175138D /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		49896911EE3E1D086492B78A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		5BD334CC44DE9DAD07B69B17 /* categories.rs */ = {isa = PBXFileReference; path = categories.rs; sourceTree = "<group>"; };
-		65A4300C7126356C04EA5B2F /* db.rs */ = {isa = PBXFileReference; path = db.rs; sourceTree = "<group>"; };
+		5BD334CC44DE9DAD07B69B17 /* categories.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = categories.rs; sourceTree = "<group>"; };
+		65A4300C7126356C04EA5B2F /* db.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = db.rs; sourceTree = "<group>"; };
 		7AE54D80CBD3B1349CB41207 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		7E8D26FA370A8C127018DE2E /* wealthy_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = wealthy_iOS.entitlements; sourceTree = "<group>"; };
 		8629B4FEEEEC6FA4E0D69EBB /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
 		AD93440FF67B512EB8921966 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		B7E1BD6FED882371FB8ABF55 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
-		C6B33B12BBC56C2FACB3792B /* entries.rs */ = {isa = PBXFileReference; path = entries.rs; sourceTree = "<group>"; };
+		C6B33B12BBC56C2FACB3792B /* entries.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = entries.rs; sourceTree = "<group>"; };
 		C85C02ECC031786527623FA1 /* bindings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bindings.h; sourceTree = "<group>"; };
-		D517781B9C5E7D3C53119533 /* books.rs */ = {isa = PBXFileReference; path = books.rs; sourceTree = "<group>"; };
+		D517781B9C5E7D3C53119533 /* books.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = books.rs; sourceTree = "<group>"; };
 		D534221063B6FF4D757CAD9F /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		DDB4EEC8C333270607EC5B33 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
-		DE18545196BD9363922E1624 /* records.rs */ = {isa = PBXFileReference; path = records.rs; sourceTree = "<group>"; };
-		DEF8F98EDB01BE3021C718C5 /* wealthy_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = wealthy_iOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DE18545196BD9363922E1624 /* records.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = records.rs; sourceTree = "<group>"; };
+		DEF8F98EDB01BE3021C718C5 /* wealthy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = wealthy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E3569D8B09D82B9534EEC459 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		E5D45145C75A47D6DD318C5B /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
-		E8B5B1ACB6C835C90E1401EB /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		E8B5B1ACB6C835C90E1401EB /* mod.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = mod.rs; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -161,7 +161,7 @@
 		EB7A300C2B69E95579216405 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				DEF8F98EDB01BE3021C718C5 /* wealthy_iOS.app */,
+				DEF8F98EDB01BE3021C718C5 /* wealthy.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -186,7 +186,7 @@
 			packageProductDependencies = (
 			);
 			productName = wealthy_iOS;
-			productReference = DEF8F98EDB01BE3021C718C5 /* wealthy_iOS.app */;
+			productReference = DEF8F98EDB01BE3021C718C5 /* wealthy.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -208,7 +208,6 @@
 			);
 			mainGroup = D707B9DD2517D18B095B9EA4;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -389,12 +388,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				ARCHS = (
-					arm64,
-				);
+				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = wealthy_iOS/wealthy_iOS.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 94S58L5ZPV;
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -406,9 +404,21 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME) $(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)";
-				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME) $(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.river.wealthy;
+				"LIBRARY_SEARCH_PATHS[arch=arm64]" = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION)",
+					"$(SDKROOT)/usr/lib/swift",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)",
+				);
+				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION)",
+					"$(SDKROOT)/usr/lib/swift",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.river.shi.wealthy;
 				PRODUCT_NAME = "wealthy";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -420,12 +430,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				ARCHS = (
-					arm64,
-				);
+				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = wealthy_iOS/wealthy_iOS.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 94S58L5ZPV;
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -437,9 +446,21 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME) $(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)";
-				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME) $(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.river.wealthy;
+				"LIBRARY_SEARCH_PATHS[arch=arm64]" = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION)",
+					"$(SDKROOT)/usr/lib/swift",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)",
+				);
+				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION)",
+					"$(SDKROOT)/usr/lib/swift",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.river.shi.wealthy;
 				PRODUCT_NAME = "wealthy";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";

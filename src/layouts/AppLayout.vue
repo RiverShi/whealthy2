@@ -26,6 +26,13 @@ function handleFAB() {
 
 onMounted(async () => {
   await bookStore.fetchBooks();
+  // 禁用 WKWebView UIScrollView 的原生滚动，防止 fixed 元素漂移
+  // 只阻止 main 以外的区域触发滚动（main 内部有 overflow-y:auto 自己处理）
+  document.addEventListener('touchmove', (e) => {
+    const main = document.querySelector('main');
+    if (main && main.contains(e.target as Node)) return;
+    e.preventDefault();
+  }, { passive: false });
 });
 
 const tabs = [
@@ -49,13 +56,12 @@ const needsBook = () =>
 </script>
 
 <template>
-  <div class="bg-background">
+  <div class="bg-background" style="position: fixed; inset: 0; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top);">
 
     <!-- ══ 主内容区（可滚动） ════════════════════════════════════════════ -->
-    <!-- top: safe-area-inset-top 统一处理灵动岛/状态栏，页面内无需重复处理 -->
     <main
       class="overflow-y-auto overflow-x-hidden"
-      style="position: fixed; top: env(safe-area-inset-top); left: 0; right: 0; bottom: calc(49px + env(safe-area-inset-bottom));"
+      style="flex: 1; min-height: 0; -webkit-overflow-scrolling: touch;"
     >
       <!-- 无账本引导页 -->
       <div
@@ -88,7 +94,7 @@ const needsBook = () =>
       v-if="bookStore.activeBook && (route.path === '/records' || route.path === '/assets')"
       @click="handleFAB"
       class="fixed z-40 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-transform duration-150"
-      style="bottom: calc(49px + env(safe-area-inset-bottom) + 16px); right: 20px;"
+      style="position: fixed; bottom: calc(36px + env(safe-area-inset-bottom) + 16px); right: 20px;"
       :aria-label="route.path === '/assets' ? '快速更新' : '新增流水'"
     >
       <Pencil v-if="route.path === '/assets'" class="w-5 h-5" />
@@ -98,14 +104,14 @@ const needsBook = () =>
     <!-- ══ 底部标签栏 ════════════════════════════════════════════════════ -->
     <nav
       class="bg-card/95 backdrop-blur-xl border-t border-border"
-      style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; padding-bottom: env(safe-area-inset-bottom);"
+      style="flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom); z-index: 50;"
     >
       <div class="flex">
         <RouterLink
           v-for="tab in tabs"
           :key="tab.to"
           :to="tab.to"
-          class="flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 cursor-pointer select-none transition-colors"
+          class="flex-1 flex flex-col items-center justify-center gap-[1px] pt-0.5 pb-0.5 cursor-pointer select-none transition-colors"
           :class="isActive(tab.to) ? 'text-primary' : 'text-muted-foreground'"
         >
           <div class="relative flex items-center justify-center">
@@ -115,7 +121,7 @@ const needsBook = () =>
             />
             <component
               :is="tab.icon"
-              class="relative w-[22px] h-[22px] transition-transform duration-200"
+              class="relative w-[18px] h-[18px] transition-transform duration-200"
               :class="isActive(tab.to) ? 'scale-110' : ''"
             />
           </div>

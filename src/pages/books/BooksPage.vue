@@ -88,7 +88,7 @@ function formatDate(dateStr: string) {
     </div>
 
     <!-- ── 内容区 ──────────────────────────────────────────────────────── -->
-    <div class="px-4 py-3 pb-8">
+    <div class="px-4 py-3 pb-3">
 
       <!-- 加载中 -->
       <div v-if="bookStore.loading" class="flex flex-col items-center justify-center py-24">
@@ -194,7 +194,7 @@ function formatDate(dateStr: string) {
         @click.self="confirmDeleteBook = null"
       >
         <div class="bg-card border border-border rounded-t-3xl w-full max-w-lg p-6 shadow-xl"
-             style="padding-bottom: calc(env(safe-area-inset-bottom) + 24px)">
+             style="padding-bottom: 24px">
           <div class="w-10 h-1 bg-border rounded-full mx-auto mb-5" />
           <div class="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto mb-4">
             <Trash2 class="w-6 h-6 text-destructive" />
@@ -226,7 +226,7 @@ function formatDate(dateStr: string) {
         @click.self="showCreate = false; newBookName = ''; createError = ''"
       >
         <div class="bg-card border border-border rounded-t-3xl w-full max-w-lg p-6 shadow-xl animate-in"
-             style="padding-bottom: calc(env(safe-area-inset-bottom) + 24px)">
+             style="padding-bottom: 24px">
           <div class="w-10 h-1 bg-border rounded-full mx-auto mb-5" />
           <div class="flex items-center gap-3 mb-5">
             <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
