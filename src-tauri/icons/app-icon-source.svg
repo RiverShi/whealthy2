@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- 主背景：深绿色渐变 -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0A3622"/>
+      <stop offset="60%" stop-color="#166534"/>
+      <stop offset="100%" stop-color="#15803D"/>
+    </linearGradient>
+    <!-- 高光：左上角光晕 -->
+    <radialGradient id="highlight" cx="30%" cy="20%" r="55%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <!-- 图表柱子渐变（金/橙方向） -->
+    <linearGradient id="bar1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FDE68A"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+    <linearGradient id="bar2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6EE7B7"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+    <linearGradient id="bar3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A7F3D0"/>
+      <stop offset="100%" stop-color="#34D399"/>
+    </linearGradient>
+    <linearGradient id="bar4" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FDE68A"/>
+      <stop offset="100%" stop-color="#FBBF24"/>
+    </linearGradient>
+    <!-- 阴影滤镜 -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+    <filter id="barShadow" x="-20%" y="-10%" width="140%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- ── 背景 ── -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#highlight)"/>
+
+  <!-- ── 底部水平基线 ── -->
+  <line x1="148" y1="762" x2="876" y2="762"
+    stroke="rgba(255,255,255,0.2)" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- ── 四根柱子（从左到右依次升高） ── -->
+  <!-- 柱1 -->
+  <rect x="160" y="610" width="132" height="152" rx="22" fill="url(#bar1)" filter="url(#barShadow)"/>
+  <!-- 柱2 -->
+  <rect x="322" y="500" width="132" height="262" rx="22" fill="url(#bar2)" filter="url(#barShadow)"/>
+  <!-- 柱3 -->
+  <rect x="484" y="390" width="132" height="372" rx="22" fill="url(#bar3)" filter="url(#barShadow)"/>
+  <!-- 柱4（最高，金色） -->
+  <rect x="646" y="262" width="132" height="500" rx="22" fill="url(#bar4)" filter="url(#barShadow)"/>
+
+  <!-- ── 趋势折线 ── -->
+  <polyline
+    points="226,578 388,462 550,356 712,230"
+    fill="none"
+    stroke="rgba(255,255,255,0.75)"
+    stroke-width="20"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- ── 折线节点圆点 ── -->
+  <circle cx="226" cy="578" r="24" fill="white" opacity="0.9"/>
+  <circle cx="388" cy="462" r="24" fill="white" opacity="0.9"/>
+  <circle cx="550" cy="356" r="24" fill="white" opacity="0.9"/>
+  <!-- 最高点放大+金边 -->
+  <circle cx="712" cy="230" r="32" fill="#FDE68A"/>
+  <circle cx="712" cy="230" r="20" fill="white"/>
+
+  <!-- ── 顶部高光条（类 iOS 磨砂感） ── -->
+  <rect x="0" y="0" width="1024" height="90"
+    fill="rgba(255,255,255,0.06)" rx="0"/>
+</svg>
