@@ -1,6 +1,6 @@
 name: wealthy
 options:
-  bundleIdPrefix: com.river.shi.wealthy
+  bundleIdPrefix: com.rivershi.wealthy
   deploymentTarget:
     iOS: 14.0
 fileGroups: [../../src]
@@ -11,7 +11,7 @@ settingGroups:
   app:
     base:
       PRODUCT_NAME: wealthy
-      PRODUCT_BUNDLE_IDENTIFIER: com.river.shi.wealthy
+      PRODUCT_BUNDLE_IDENTIFIER: com.rivershi.wealthy
 targetTemplates:
   app:
     type: application
